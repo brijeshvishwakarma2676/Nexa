@@ -44,7 +44,7 @@ export default function Feed() {
   return (
     <div className="space-y-6">
       {/* Stories */}
-      {storyGroups.length > 0 && <StoryBar />}
+      <StoryBar />
 
       {/* Create Post */}
       <CreatePost />

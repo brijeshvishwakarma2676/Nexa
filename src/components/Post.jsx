@@ -1,21 +1,32 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Heart, MessageCircle, UserPlus, MoreHorizontal, Trash2 } from 'lucide-react'
+import {
+  ThumbsUp, MessageCircle, Share2, MoreHorizontal, X,
+  Globe, Users as UsersIcon, Trash2, UserPlus
+} from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { useFeedStore } from '../stores/feedStore'
 import { useAuthStore } from '../stores/authStore'
 import api from '../services/api'
 import Comments from './Comments'
 
+const MAX_CONTENT_LENGTH = 200
+
 export default function Post({ post }) {
   const { user } = useAuthStore()
-  const { toggleLike, removePost } = useFeedStore()
+  const { toggleLike, removePost, sharePost } = useFeedStore()
 
   const [showComments, setShowComments] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false)
   const [isFollowing, setIsFollowing] = useState(false)
+  const [isSharing, setIsSharing] = useState(false)
 
   const isOwner = user?.id === post.author.id
+  const shouldTruncate = post.content?.length > MAX_CONTENT_LENGTH && !isExpanded
+  const displayContent = shouldTruncate
+    ? post.content.slice(0, MAX_CONTENT_LENGTH) + '...'
+    : post.content
 
   const handleLike = () => {
     toggleLike(post.id)
@@ -30,6 +41,17 @@ export default function Post({ post }) {
     }
   }
 
+  const handleShare = async () => {
+    setIsSharing(true)
+    try {
+      await sharePost(post.id)
+    } catch (error) {
+      console.error('Failed to share:', error)
+    } finally {
+      setIsSharing(false)
+    }
+  }
+
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this post?')) return
 
@@ -41,122 +63,205 @@ export default function Post({ post }) {
     }
   }
 
+  const handleHidePost = () => {
+    removePost(post.id)
+    setShowMenu(false)
+  }
+
+  // Format large numbers
+  const formatCount = (count) => {
+    if (count >= 1000000) return (count / 1000000).toFixed(1) + 'M'
+    if (count >= 1000) return (count / 1000).toFixed(1) + 'K'
+    return count
+  }
+
   return (
-    <article className="card overflow-hidden animate-fadeIn">
+    <article className="bg-white rounded-lg shadow-sm border border-[var(--color-border)] overflow-hidden animate-fadeIn">
       {/* Header */}
-      <div className="p-4 flex items-start justify-between">
+      <div className="p-3 flex items-start justify-between">
         <div className="flex gap-3">
           <Link to={`/profile/${post.author.username}`}>
             <img
               src={post.author.avatar_url || `https://ui-avatars.com/api/?name=${post.author.username}&background=4F46E5&color=fff`}
               alt={post.author.username}
-              className="w-11 h-11 rounded-full avatar hover:opacity-90 transition-opacity"
+              className="w-10 h-10 rounded-full hover:opacity-90 transition-opacity"
             />
           </Link>
           <div>
-            <Link
-              to={`/profile/${post.author.username}`}
-              className="font-semibold text-[var(--color-text-primary)] hover:underline"
-            >
-              {post.author.display_name || post.author.username}
-            </Link>
-            <p className="text-sm text-[var(--color-text-muted)]">
-              @{post.author.username} · {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
-            </p>
+            <div className="flex items-center gap-1 flex-wrap">
+              <Link
+                to={`/profile/${post.author.username}`}
+                className="font-semibold text-[var(--color-text-primary)] hover:underline text-[15px]"
+              >
+                {post.author.display_name || post.author.username}
+              </Link>
+              {!isOwner && !isFollowing && (
+                <>
+                  <span className="text-[var(--color-text-muted)]">·</span>
+                  <button
+                    onClick={handleFollow}
+                    className="text-[var(--color-primary)] font-semibold text-[15px] hover:underline"
+                  >
+                    Follow
+                  </button>
+                </>
+              )}
+            </div>
+            <div className="flex items-center gap-1 text-xs text-[var(--color-text-muted)]">
+              <span>{formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}</span>
+              <span>·</span>
+              {post.visibility === 'public' ? (
+                <Globe className="w-3 h-3" title="Public" />
+              ) : (
+                <UsersIcon className="w-3 h-3" title="Friends only" />
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="relative">
-          <button
-            onClick={() => setShowMenu(!showMenu)}
-            className="p-2 rounded-full hover:bg-[var(--color-bg)] transition-colors"
-          >
-            <MoreHorizontal className="w-5 h-5 text-[var(--color-text-muted)]" />
-          </button>
+        <div className="flex items-center gap-1">
+          {/* Menu button */}
+          <div className="relative">
+            <button
+              onClick={() => setShowMenu(!showMenu)}
+              className="p-2 rounded-full hover:bg-[var(--color-bg)] transition-colors"
+            >
+              <MoreHorizontal className="w-5 h-5 text-[var(--color-text-muted)]" />
+            </button>
 
-          {showMenu && (
-            <div className="absolute right-0 top-full mt-1 w-48 card py-1 z-10 animate-fadeIn">
-              {!isOwner && !isFollowing && (
-                <button
-                  onClick={() => {
-                    handleFollow()
-                    setShowMenu(false)
-                  }}
-                  className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-[var(--color-bg)] transition-colors"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  Follow @{post.author.username}
-                </button>
-              )}
-              {isOwner && (
-                <button
-                  onClick={() => {
-                    handleDelete()
-                    setShowMenu(false)
-                  }}
-                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-[var(--color-error)] hover:bg-red-50 transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Delete post
-                </button>
-              )}
-            </div>
-          )}
+            {showMenu && (
+              <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-[var(--color-border)] py-1 z-10 animate-fadeIn">
+                {!isOwner && !isFollowing && (
+                  <button
+                    onClick={() => {
+                      handleFollow()
+                      setShowMenu(false)
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-[var(--color-bg)] transition-colors"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    Follow @{post.author.username}
+                  </button>
+                )}
+                {isOwner && (
+                  <button
+                    onClick={() => {
+                      handleDelete()
+                      setShowMenu(false)
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-[var(--color-error)] hover:bg-red-50 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete post
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Close/Hide button */}
+          <button
+            onClick={handleHidePost}
+            className="p-2 rounded-full hover:bg-[var(--color-bg)] transition-colors"
+            title="Hide post"
+          >
+            <X className="w-5 h-5 text-[var(--color-text-muted)]" />
+          </button>
         </div>
       </div>
 
       {/* Content */}
-      <div className="px-4 pb-3">
-        <p className="text-[var(--color-text-primary)] whitespace-pre-wrap">
-          {post.content}
-        </p>
-      </div>
+      {post.content && (
+        <div className="px-4 pb-3">
+          <p className="text-[var(--color-text-primary)] whitespace-pre-wrap text-[15px]">
+            {displayContent}
+          </p>
+          {shouldTruncate && (
+            <button
+              onClick={() => setIsExpanded(true)}
+              className="text-[var(--color-text-muted)] hover:underline font-medium mt-1"
+            >
+              See more
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Image */}
       {post.image_url && (
-        <div className="border-t border-b border-[var(--color-border)]">
+        <div className="border-t border-[var(--color-border)]">
           <img
             src={post.image_url}
             alt="Post image"
-            className="w-full max-h-[500px] object-cover"
+            className="w-full max-h-[600px] object-cover"
           />
         </div>
       )}
 
-      {/* Stats */}
-      <div className="px-4 py-2 flex items-center gap-4 text-sm text-[var(--color-text-muted)]">
-        {post.likes_count > 0 && (
-          <span>{post.likes_count} like{post.likes_count !== 1 ? 's' : ''}</span>
-        )}
-        {post.comments_count > 0 && (
-          <span>{post.comments_count} comment{post.comments_count !== 1 ? 's' : ''}</span>
-        )}
+      {/* Engagement Stats */}
+      <div className="px-4 py-2 flex items-center justify-between text-sm text-[var(--color-text-muted)]">
+        {/* Reactions */}
+        <div className="flex items-center gap-1">
+          {post.likes_count > 0 && (
+            <>
+              <div className="flex -space-x-1">
+                <span className="w-[18px] h-[18px] rounded-full bg-blue-500 flex items-center justify-center text-[10px]">👍</span>
+                <span className="w-[18px] h-[18px] rounded-full bg-red-500 flex items-center justify-center text-[10px]">❤️</span>
+              </div>
+              <span className="ml-1">{formatCount(post.likes_count)}</span>
+            </>
+          )}
+        </div>
+
+        {/* Comments & Shares */}
+        <div className="flex items-center gap-3">
+          {post.comments_count > 0 && (
+            <button
+              onClick={() => setShowComments(!showComments)}
+              className="hover:underline"
+            >
+              {formatCount(post.comments_count)} comment{post.comments_count !== 1 ? 's' : ''}
+            </button>
+          )}
+          {post.shares_count > 0 && (
+            <span>{formatCount(post.shares_count)} share{post.shares_count !== 1 ? 's' : ''}</span>
+          )}
+        </div>
       </div>
 
-      {/* Actions */}
-      <div className="px-4 py-2 border-t border-[var(--color-border)] flex gap-2">
+      {/* Action Buttons */}
+      <div className="px-3 py-1 border-t border-[var(--color-border)] flex">
         <button
           onClick={handleLike}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg transition-colors ${post.is_liked
-              ? 'text-[var(--color-secondary)] bg-[var(--color-secondary)]/10'
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg transition-colors font-medium ${post.is_liked
+              ? 'text-[var(--color-primary)]'
               : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)]'
             }`}
         >
-          <Heart
-            className={`w-5 h-5 ${post.is_liked ? 'fill-current animate-heartBeat' : ''}`}
+          <ThumbsUp
+            className={`w-5 h-5 ${post.is_liked ? 'fill-current' : ''}`}
           />
-          <span className="font-medium">Like</span>
+          <span>Like</span>
         </button>
 
         <button
           onClick={() => setShowComments(!showComments)}
-          className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg transition-colors ${showComments
-              ? 'text-[var(--color-primary)] bg-[var(--color-primary-light)]'
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg transition-colors font-medium ${showComments
+              ? 'text-[var(--color-primary)]'
               : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)]'
             }`}
         >
           <MessageCircle className="w-5 h-5" />
-          <span className="font-medium">Comment</span>
+          <span>Comment</span>
+        </button>
+
+        <button
+          onClick={handleShare}
+          disabled={isSharing}
+          className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg transition-colors font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] disabled:opacity-50"
+        >
+          <Share2 className="w-5 h-5" />
+          <span>{isSharing ? 'Sharing...' : 'Share'}</span>
         </button>
       </div>
 

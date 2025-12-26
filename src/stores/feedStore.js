@@ -108,6 +108,35 @@ export const useFeedStore = create((set, get) => ({
     }
   },
 
+  // Share post
+  sharePost: async (postId) => {
+    const post = get().posts.find((p) => p.id === postId)
+    if (!post) return
+
+    // Optimistic update
+    set((state) => ({
+      posts: state.posts.map((p) =>
+        p.id === postId
+          ? { ...p, shares_count: (p.shares_count || 0) + 1 }
+          : p
+      ),
+    }))
+
+    try {
+      await api.post(`/posts/${postId}/share`)
+    } catch (error) {
+      // Revert on error
+      set((state) => ({
+        posts: state.posts.map((p) =>
+          p.id === postId
+            ? { ...p, shares_count: Math.max(0, (p.shares_count || 1) - 1) }
+            : p
+        ),
+      }))
+      throw error
+    }
+  },
+
   // Reset store
   reset: () => {
     set({ posts: [], isLoading: false, hasMore: true, cursor: null, error: null })

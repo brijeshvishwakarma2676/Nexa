@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { Image, Send, X, Loader2 } from 'lucide-react'
+import { Image, Video, Smile, X, Loader2 } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
 import { useFeedStore } from '../stores/feedStore'
 import api from '../services/api'
@@ -8,6 +8,7 @@ export default function CreatePost() {
   const { user } = useAuthStore()
   const { addPost } = useFeedStore()
 
+  const [isExpanded, setIsExpanded] = useState(false)
   const [content, setContent] = useState('')
   const [image, setImage] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
@@ -33,6 +34,7 @@ export default function CreatePost() {
     setImage(file)
     setImagePreview(URL.createObjectURL(file))
     setError('')
+    setIsExpanded(true)
   }
 
   const removeImage = () => {
@@ -43,9 +45,7 @@ export default function CreatePost() {
     }
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-
+  const handleSubmit = async () => {
     if (!content.trim() && !image) {
       setError('Please write something or add an image')
       return
@@ -57,7 +57,6 @@ export default function CreatePost() {
     try {
       let imageUrl = null
 
-      // Upload image first if exists
       if (image) {
         const formData = new FormData()
         formData.append('file', image)
@@ -68,23 +67,21 @@ export default function CreatePost() {
         imageUrl = uploadResponse.data.image_url
       }
 
-      // Create post
       const response = await api.post('/posts', {
         content: content.trim(),
         image_url: imageUrl,
         visibility: 'public',
       })
 
-      // Add to feed
       addPost(response.data)
 
       // Reset form
       setContent('')
       removeImage()
+      setIsExpanded(false)
     } catch (error) {
       const detail = error.response?.data?.detail
       if (Array.isArray(detail)) {
-        // Pydantic validation errors
         setError(detail.map(e => e.msg).join(', '))
       } else if (typeof detail === 'string') {
         setError(detail)
@@ -96,83 +93,169 @@ export default function CreatePost() {
     }
   }
 
-  return (
-    <div className="card p-4">
-      <div className="flex gap-3">
-        <img
-          src={user?.avatar_url || `https://ui-avatars.com/api/?name=${user?.username}&background=4F46E5&color=fff`}
-          alt={user?.username}
-          className="w-10 h-10 rounded-full avatar flex-shrink-0"
-        />
+  const closeModal = () => {
+    if (!isLoading) {
+      setIsExpanded(false)
+      setContent('')
+      removeImage()
+      setError('')
+    }
+  }
 
-        <div className="flex-1">
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="What's on your mind?"
-            rows={3}
-            className="w-full resize-none border-none focus:ring-0 bg-transparent text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] text-base"
+  return (
+    <>
+      {/* Quick Post Input */}
+      <div className="bg-white rounded-lg shadow-sm border border-[var(--color-border)] p-3">
+        <div className="flex items-center gap-3">
+          <img
+            src={user?.avatar_url || `https://ui-avatars.com/api/?name=${user?.username}&background=4F46E5&color=fff`}
+            alt={user?.username}
+            className="w-10 h-10 rounded-full flex-shrink-0"
           />
 
-          {/* Image preview */}
-          {imagePreview && (
-            <div className="relative mt-3 rounded-lg overflow-hidden">
-              <img
-                src={imagePreview}
-                alt="Preview"
-                className="max-h-64 w-full object-cover rounded-lg"
-              />
-              <button
-                onClick={removeImage}
-                className="absolute top-2 right-2 p-1 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-          )}
+          <button
+            onClick={() => setIsExpanded(true)}
+            className="flex-1 text-left px-4 py-2.5 bg-[var(--color-bg)] hover:bg-gray-200 rounded-full text-[var(--color-text-muted)] transition-colors"
+          >
+            What's on your mind, {user?.display_name || user?.username}?
+          </button>
 
-          {/* Error */}
-          {error && (
-            <p className="text-[var(--color-error)] text-sm mt-2">{error}</p>
-          )}
-
-          {/* Actions */}
-          <div className="flex items-center justify-between mt-3 pt-3 border-t border-[var(--color-border)]">
-            <div className="flex gap-2">
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleImageSelect}
-                accept="image/*"
-                className="hidden"
-              />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="btn btn-ghost p-2"
-                title="Add image"
-              >
-                <Image className="w-5 h-5" />
-              </button>
-            </div>
-
+          {/* Quick action icons */}
+          <div className="flex items-center gap-1">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleImageSelect}
+              accept="image/*"
+              className="hidden"
+            />
             <button
-              onClick={handleSubmit}
-              disabled={isLoading || (!content.trim() && !image)}
-              className="btn btn-primary"
+              onClick={() => fileInputRef.current?.click()}
+              className="p-2 hover:bg-[var(--color-bg)] rounded-full transition-colors"
+              title="Photo"
             >
-              {isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <>
-                  <Send className="w-4 h-4" />
-                  Post
-                </>
-              )}
+              <Image className="w-6 h-6 text-green-500" />
+            </button>
+            <button
+              className="p-2 hover:bg-[var(--color-bg)] rounded-full transition-colors"
+              title="Video"
+            >
+              <Video className="w-6 h-6 text-red-500" />
+            </button>
+            <button
+              onClick={() => setIsExpanded(true)}
+              className="p-2 hover:bg-[var(--color-bg)] rounded-full transition-colors"
+              title="Feeling"
+            >
+              <Smile className="w-6 h-6 text-yellow-500" />
             </button>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Expanded Post Modal */}
+      {isExpanded && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fadeIn">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 animate-slideUp">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)]">
+              <h2 className="text-xl font-bold text-center flex-1">Create post</h2>
+              <button
+                onClick={closeModal}
+                className="p-2 hover:bg-[var(--color-bg)] rounded-full transition-colors"
+              >
+                <X className="w-6 h-6 text-[var(--color-text-muted)]" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-4">
+              {/* User info */}
+              <div className="flex items-center gap-3 mb-4">
+                <img
+                  src={user?.avatar_url || `https://ui-avatars.com/api/?name=${user?.username}&background=4F46E5&color=fff`}
+                  alt={user?.username}
+                  className="w-10 h-10 rounded-full"
+                />
+                <div>
+                  <p className="font-semibold text-[var(--color-text-primary)]">
+                    {user?.display_name || user?.username}
+                  </p>
+                  <span className="text-xs bg-[var(--color-bg)] px-2 py-0.5 rounded text-[var(--color-text-muted)]">
+                    🌐 Public
+                  </span>
+                </div>
+              </div>
+
+              {/* Content textarea */}
+              <textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder={`What's on your mind, ${user?.display_name || user?.username}?`}
+                rows={4}
+                autoFocus
+                className="w-full resize-none border-none focus:ring-0 bg-transparent text-lg text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]"
+              />
+
+              {/* Image preview */}
+              {imagePreview && (
+                <div className="relative mt-3 rounded-lg overflow-hidden border border-[var(--color-border)]">
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    className="max-h-64 w-full object-cover"
+                  />
+                  <button
+                    onClick={removeImage}
+                    className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              )}
+
+              {/* Error */}
+              {error && (
+                <p className="text-[var(--color-error)] text-sm mt-3">{error}</p>
+              )}
+
+              {/* Add to post */}
+              <div className="flex items-center justify-between mt-4 p-3 border border-[var(--color-border)] rounded-lg">
+                <span className="text-sm font-medium text-[var(--color-text-primary)]">Add to your post</span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="p-2 hover:bg-[var(--color-bg)] rounded-full transition-colors"
+                  >
+                    <Image className="w-6 h-6 text-green-500" />
+                  </button>
+                  <button className="p-2 hover:bg-[var(--color-bg)] rounded-full transition-colors">
+                    <Video className="w-6 h-6 text-red-500" />
+                  </button>
+                  <button className="p-2 hover:bg-[var(--color-bg)] rounded-full transition-colors">
+                    <Smile className="w-6 h-6 text-yellow-500" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-[var(--color-border)]">
+              <button
+                onClick={handleSubmit}
+                disabled={isLoading || (!content.trim() && !image)}
+                className="w-full py-2.5 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-dark)]"
+              >
+                {isLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin mx-auto" />
+                ) : (
+                  'Post'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 }

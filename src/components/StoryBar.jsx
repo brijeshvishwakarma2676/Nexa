@@ -1,46 +1,91 @@
-import { Plus } from 'lucide-react'
+import { Plus, ChevronRight, ChevronLeft } from 'lucide-react'
 import { useStoryStore } from '../stores/storyStore'
 import { useAuthStore } from '../stores/authStore'
+import { useRef, useState } from 'react'
 
 export default function StoryBar() {
   const { user } = useAuthStore()
   const { storyGroups, openViewer } = useStoryStore()
+  const scrollRef = useRef(null)
+  const [showLeftArrow, setShowLeftArrow] = useState(false)
+  const [showRightArrow, setShowRightArrow] = useState(true)
 
   // Find current user's stories
   const userStoryGroup = storyGroups.find((g) => g.user.id === user?.id)
   const otherStoryGroups = storyGroups.filter((g) => g.user.id !== user?.id)
 
+  const handleScroll = () => {
+    if (scrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current
+      setShowLeftArrow(scrollLeft > 0)
+      setShowRightArrow(scrollLeft < scrollWidth - clientWidth - 10)
+    }
+  }
+
+  const scroll = (direction) => {
+    if (scrollRef.current) {
+      const scrollAmount = 300
+      scrollRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      })
+    }
+  }
+
   return (
-    <div className="card p-4">
-      <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-        {/* Add Story Button */}
-        <div className="flex-shrink-0">
-          <button
-            onClick={() => {
-              // TODO: Open create story modal
-              console.log('Create story')
-            }}
-            className="relative flex flex-col items-center"
-          >
-            <div className="relative">
-              <img
-                src={user?.avatar_url || `https://ui-avatars.com/api/?name=${user?.username}&background=4F46E5&color=fff`}
-                alt="Add story"
-                className="w-16 h-16 rounded-full avatar ring-2 ring-[var(--color-border)]"
-              />
-              <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-[var(--color-primary)] flex items-center justify-center ring-2 ring-white">
-                <Plus className="w-4 h-4 text-white" />
-              </div>
+    <div className="relative bg-white rounded-lg shadow-sm border border-[var(--color-border)] p-3">
+      {/* Left Arrow */}
+      {showLeftArrow && (
+        <button
+          onClick={() => scroll('left')}
+          className="absolute left-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 rounded-full bg-white shadow-lg border border-[var(--color-border)] flex items-center justify-center hover:bg-gray-50 transition-colors"
+        >
+          <ChevronLeft className="w-6 h-6 text-[var(--color-text-primary)]" />
+        </button>
+      )}
+
+      {/* Right Arrow */}
+      {showRightArrow && storyGroups.length > 3 && (
+        <button
+          onClick={() => scroll('right')}
+          className="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 rounded-full bg-white shadow-lg border border-[var(--color-border)] flex items-center justify-center hover:bg-gray-50 transition-colors"
+        >
+          <ChevronRight className="w-6 h-6 text-[var(--color-text-primary)]" />
+        </button>
+      )}
+
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="flex gap-2 overflow-x-auto scrollbar-hide scroll-smooth"
+      >
+        {/* Create Story Card */}
+        <div className="flex-shrink-0 w-28 h-48 relative rounded-xl overflow-hidden cursor-pointer group shadow-sm border border-[var(--color-border)]">
+          {/* User's photo as background (top half) */}
+          <div className="h-3/4 bg-gradient-to-b from-[var(--color-primary)] to-[var(--color-primary-dark)]">
+            <img
+              src={user?.avatar_url || `https://ui-avatars.com/api/?name=${user?.username}&background=4F46E5&color=fff`}
+              alt="Create story"
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+            />
+          </div>
+
+          {/* Bottom section with plus button */}
+          <div className="h-1/4 bg-white flex flex-col items-center justify-center pt-4">
+            <span className="text-xs font-semibold text-[var(--color-text-primary)]">Create story</span>
+          </div>
+
+          {/* Plus button (centered on divider) */}
+          <div className="absolute left-1/2 -translate-x-1/2 top-[72%] -translate-y-1/2">
+            <div className="w-10 h-10 rounded-full bg-[var(--color-primary)] flex items-center justify-center ring-4 ring-white">
+              <Plus className="w-6 h-6 text-white" />
             </div>
-            <span className="text-xs text-[var(--color-text-secondary)] mt-2 max-w-[72px] truncate">
-              Add Story
-            </span>
-          </button>
+          </div>
         </div>
 
         {/* User's own stories */}
         {userStoryGroup && (
-          <StoryAvatar
+          <StoryCard
             group={userStoryGroup}
             index={storyGroups.indexOf(userStoryGroup)}
             onClick={openViewer}
@@ -50,7 +95,7 @@ export default function StoryBar() {
 
         {/* Other users' stories */}
         {otherStoryGroups.map((group) => (
-          <StoryAvatar
+          <StoryCard
             key={group.user.id}
             group={group}
             index={storyGroups.indexOf(group)}
@@ -62,25 +107,43 @@ export default function StoryBar() {
   )
 }
 
-function StoryAvatar({ group, index, onClick, isOwn = false }) {
+function StoryCard({ group, index, onClick, isOwn = false }) {
   const hasUnseen = !group.all_seen
+  const latestStory = group.stories[group.stories.length - 1]
 
   return (
     <button
       onClick={() => onClick(index)}
-      className="flex-shrink-0 flex flex-col items-center"
+      className="flex-shrink-0 w-28 h-48 relative rounded-xl overflow-hidden group"
     >
-      <div className={hasUnseen ? 'story-ring-unseen' : 'story-ring-seen'}>
+      {/* Story image background */}
+      <div className="absolute inset-0">
         <img
-          src={group.user.avatar_url || `https://ui-avatars.com/api/?name=${group.user.username}&background=4F46E5&color=fff`}
+          src={latestStory?.media_url || group.user.avatar_url || `https://ui-avatars.com/api/?name=${group.user.username}&background=4F46E5&color=fff`}
           alt={group.user.username}
-          className="w-14 h-14 rounded-full avatar ring-2 ring-white"
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
         />
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
       </div>
-      <span className={`text-xs mt-2 max-w-[72px] truncate ${hasUnseen ? 'text-[var(--color-text-primary)] font-medium' : 'text-[var(--color-text-muted)]'
-        }`}>
-        {isOwn ? 'Your Story' : group.user.display_name || group.user.username}
-      </span>
+
+      {/* User avatar with ring */}
+      <div className="absolute top-3 left-3">
+        <div className={`p-0.5 rounded-full ${hasUnseen ? 'bg-gradient-to-tr from-[var(--color-primary)] to-[var(--color-secondary)]' : 'bg-gray-300'}`}>
+          <img
+            src={group.user.avatar_url || `https://ui-avatars.com/api/?name=${group.user.username}&background=4F46E5&color=fff`}
+            alt={group.user.username}
+            className="w-9 h-9 rounded-full ring-2 ring-white object-cover"
+          />
+        </div>
+      </div>
+
+      {/* Username at bottom */}
+      <div className="absolute bottom-3 left-3 right-3">
+        <span className={`text-xs font-medium text-white drop-shadow-lg line-clamp-2 ${hasUnseen ? '' : 'opacity-80'}`}>
+          {isOwn ? 'Your Story' : group.user.display_name || group.user.username}
+        </span>
+      </div>
     </button>
   )
 }
