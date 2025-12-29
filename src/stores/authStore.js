@@ -64,6 +64,27 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
+  // Google Login
+  googleLogin: async (token) => {
+    set({ isLoading: true, error: null })
+
+    try {
+      const response = await api.post('/auth/google', { token })
+      const { user, access_token, refresh_token } = response.data
+
+      localStorage.setItem('access_token', access_token)
+      localStorage.setItem('refresh_token', refresh_token)
+      localStorage.setItem('user', JSON.stringify(user))
+
+      set({ user, isAuthenticated: true, isLoading: false })
+      return { success: true }
+    } catch (error) {
+      const message = error.response?.data?.detail || 'Google login failed'
+      set({ error: message, isLoading: false })
+      return { success: false, error: message }
+    }
+  },
+
   // Logout
   logout: () => {
     localStorage.removeItem('access_token')

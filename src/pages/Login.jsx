@@ -1,15 +1,57 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
 
+const GOOGLE_CLIENT_ID = '75355985562-3jkt7pgrcegteani3r0hflob6e8famaa.apps.googleusercontent.com'
+
 export default function Login() {
   const navigate = useNavigate()
-  const { login, isLoading, error, clearError } = useAuthStore()
+  const { login, googleLogin, isLoading, error, clearError } = useAuthStore()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+
+  // Load Google script and render button
+  useEffect(() => {
+    const script = document.createElement('script')
+    script.src = 'https://accounts.google.com/gsi/client'
+    script.async = true
+    script.onload = initGoogle
+    document.body.appendChild(script)
+
+    return () => {
+      if (document.body.contains(script)) {
+        document.body.removeChild(script)
+      }
+    }
+  }, [])
+
+  const initGoogle = () => {
+    if (!window.google) return
+
+    window.google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      callback: async (response) => {
+        const result = await googleLogin(response.credential)
+        if (result.success) {
+          navigate('/')
+        }
+      }
+    })
+
+    // Render Google button
+    const container = document.getElementById('google-btn')
+    if (container) {
+      window.google.accounts.id.renderButton(container, {
+        theme: 'outline',
+        size: 'large',
+        text: 'continue_with',
+        width: 320
+      })
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -22,7 +64,7 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg)] flex">
+    <div className="min-h-screen bg-(--color-bg) flex">
       {/* Left side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 gradient-primary items-center justify-center p-12">
         <div className="max-w-md text-center text-white">
@@ -44,14 +86,14 @@ export default function Login() {
             <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center mx-auto mb-4">
               <span className="text-3xl font-bold text-white">N</span>
             </div>
-            <h1 className="text-2xl font-bold text-[var(--color-primary)]">Nexa</h1>
+            <h1 className="text-2xl font-bold text-(--color-primary)">Nexa</h1>
           </div>
 
           <div className="card p-8">
-            <h2 className="text-2xl font-bold text-[var(--color-text-primary)] mb-2">
+            <h2 className="text-2xl font-bold text-(--color-text-primary) mb-2">
               Welcome back
             </h2>
-            <p className="text-[var(--color-text-muted)] mb-6">
+            <p className="text-(--color-text-muted) mb-6">
               Sign in to continue to your account
             </p>
 
@@ -64,11 +106,11 @@ export default function Login() {
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Email */}
               <div>
-                <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">
+                <label className="block text-sm font-medium text-(--color-text-primary) mb-1">
                   Email
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-text-muted)]" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-(--color-text-muted)" />
                   <input
                     type="email"
                     value={email}
@@ -82,11 +124,11 @@ export default function Login() {
 
               {/* Password */}
               <div>
-                <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">
+                <label className="block text-sm font-medium text-(--color-text-primary) mb-1">
                   Password
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-text-muted)]" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-(--color-text-muted)" />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
@@ -98,7 +140,7 @@ export default function Login() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-(--color-text-muted) hover:text-(--color-text-primary)"
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
@@ -117,11 +159,24 @@ export default function Login() {
                   'Sign In'
                 )}
               </button>
+
+              {/* Divider */}
+              <div className="relative my-4">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-200"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-white text-gray-500">or continue with</span>
+                </div>
+              </div>
+
+              {/* Google Button - rendered by Google SDK */}
+              <div id="google-btn" className="flex justify-center"></div>
             </form>
 
-            <p className="mt-6 text-center text-[var(--color-text-muted)]">
+            <p className="mt-6 text-center text-(--color-text-muted)">
               Don't have an account?{' '}
-              <Link to="/register" className="text-[var(--color-primary)] font-medium hover:underline">
+              <Link to="/register" className="text-(--color-primary) font-medium hover:underline">
                 Sign up
               </Link>
             </p>
