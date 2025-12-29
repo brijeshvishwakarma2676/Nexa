@@ -2,6 +2,7 @@ import { Plus, ChevronRight, ChevronLeft } from 'lucide-react'
 import { useStoryStore } from '../stores/storyStore'
 import { useAuthStore } from '../stores/authStore'
 import { useRef, useState } from 'react'
+import CreateStory from './CreateStory'
 
 export default function StoryBar() {
   const { user } = useAuthStore()
@@ -9,6 +10,7 @@ export default function StoryBar() {
   const scrollRef = useRef(null)
   const [showLeftArrow, setShowLeftArrow] = useState(false)
   const [showRightArrow, setShowRightArrow] = useState(true)
+  const [showCreateModal, setShowCreateModal] = useState(false)
 
   // Find current user's stories
   const userStoryGroup = storyGroups.find((g) => g.user.id === user?.id)
@@ -60,9 +62,12 @@ export default function StoryBar() {
         className="flex gap-2 overflow-x-auto scrollbar-hide scroll-smooth"
       >
         {/* Create Story Card */}
-        <div className="flex-shrink-0 w-28 h-48 relative rounded-xl overflow-hidden cursor-pointer group shadow-sm border border-[var(--color-border)]">
-          {/* User's photo as background (top half) */}
-          <div className="h-3/4 bg-gradient-to-b from-[var(--color-primary)] to-[var(--color-primary-dark)]">
+        <div
+          onClick={() => setShowCreateModal(true)}
+          className="flex-shrink-0 w-28 h-48 relative rounded-xl overflow-hidden cursor-pointer group shadow-sm border border-[var(--color-border)]"
+        >
+          {/* User's photo as background */}
+          <div className="h-3/4 bg-gradient-to-b from-blue-500 to-indigo-600">
             <img
               src={user?.avatar_url || `https://ui-avatars.com/api/?name=${user?.username}&background=4F46E5&color=fff`}
               alt="Create story"
@@ -70,14 +75,14 @@ export default function StoryBar() {
             />
           </div>
 
-          {/* Bottom section with plus button */}
+          {/* Bottom section */}
           <div className="h-1/4 bg-white flex flex-col items-center justify-center pt-4">
-            <span className="text-xs font-semibold text-[var(--color-text-primary)]">Create story</span>
+            <span className="text-xs font-semibold text-gray-800">Create story</span>
           </div>
 
-          {/* Plus button (centered on divider) */}
+          {/* Plus button */}
           <div className="absolute left-1/2 -translate-x-1/2 top-[72%] -translate-y-1/2">
-            <div className="w-10 h-10 rounded-full bg-[var(--color-primary)] flex items-center justify-center ring-4 ring-white">
+            <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center ring-4 ring-white">
               <Plus className="w-6 h-6 text-white" />
             </div>
           </div>
@@ -103,6 +108,12 @@ export default function StoryBar() {
           />
         ))}
       </div>
+
+      {/* Create Story Modal */}
+      <CreateStory
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+      />
     </div>
   )
 }

@@ -134,7 +134,9 @@ export const useChatStore = create((set, get) => ({
     const token = localStorage.getItem('access_token')
     if (!token) return
 
-    const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/chat?token=${token}`
+    // Use relative path so Vite proxy handles it in dev, or use absolute in production
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const wsUrl = `${wsProtocol}//${window.location.host}/ws/chat?token=${token}`
     const ws = new WebSocket(wsUrl)
 
     ws.onopen = () => {

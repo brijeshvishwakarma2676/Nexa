@@ -34,10 +34,10 @@ export default function Chat() {
 
   // Select conversation from URL
   useEffect(() => {
-    if (conversationId) {
+    if (conversationId && conversations.length > 0) {
       selectConversation(parseInt(conversationId))
     }
-  }, [conversationId, selectConversation, conversations])
+  }, [conversationId, selectConversation]) // Removed conversations to prevent re-fetch loop
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -217,8 +217,8 @@ export default function Chat() {
                     >
                       <div
                         className={`max-w-[70%] rounded-2xl px-4 py-2 ${isMine
-                            ? 'bg-[var(--color-primary)] text-white rounded-br-md'
-                            : 'bg-[var(--color-bg)] text-[var(--color-text-primary)] rounded-bl-md'
+                          ? 'bg-[var(--color-primary)] text-white rounded-br-md'
+                          : 'bg-[var(--color-bg)] text-[var(--color-text-primary)] rounded-bl-md'
                           }`}
                       >
                         <p>{msg.content}</p>

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Camera, Edit2, UserPlus, UserMinus, Loader2, Grid, Bookmark } from 'lucide-react'
+import { Camera, Edit2, UserPlus, UserMinus, Loader2, Grid, MessageSquare } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
+import { useChatStore } from '../stores/chatStore'
 import api from '../services/api'
 import Post from '../components/Post'
 
@@ -9,6 +10,7 @@ export default function Profile() {
   const { username } = useParams()
   const navigate = useNavigate()
   const { user: currentUser, updateUser } = useAuthStore()
+  const { startConversation } = useChatStore()
 
   const [profile, setProfile] = useState(null)
   const [posts, setPosts] = useState([])
@@ -25,28 +27,25 @@ export default function Profile() {
     const fetchProfile = async () => {
       setIsLoading(true)
       try {
-        const [profileRes, postsRes] = await Promise.all([
-          api.get(`/users/${username}`),
-          api.get(`/posts/user/${username === currentUser?.username ? currentUser.id : 0}`, {
-            params: { limit: 20 }
-          }).catch(() => ({ data: { posts: [] } }))
-        ])
-
+        const profileRes = await api.get(`/users/${username}`)
         setProfile(profileRes.data)
-        // Fetch posts separately with user ID
-        const userPostsRes = await api.get(`/posts/user/${profileRes.data.id}`, {
-          params: { limit: 20 }
-        })
-        setPosts(userPostsRes.data.posts)
 
+        // Initialize edit form
         setEditForm({
           display_name: profileRes.data.display_name || '',
           bio: profileRes.data.bio || ''
         })
+
+        // Fetch posts separately with user ID
+        const postsRes = await api.get(`/posts/user/${profileRes.data.id}`, {
+          params: { limit: 20 }
+        }).catch(() => ({ data: { posts: [] } }))
+
+        setPosts(postsRes.data.posts || [])
       } catch (error) {
         console.error('Failed to load profile:', error)
         if (error.response?.status === 404) {
-          navigate('/')
+          // Could handle redirect or show not found
         }
       } finally {
         setIsLoading(false)
@@ -54,7 +53,16 @@ export default function Profile() {
     }
 
     fetchProfile()
-  }, [username, currentUser, navigate])
+  }, [username])
+
+  // Message handler
+  const handleMessage = async () => {
+    if (!profile) return
+    const conversation = await startConversation(profile.id)
+    if (conversation) {
+      navigate(`/chat/${conversation.id}`)
+    }
+  }
 
   // Follow/Unfollow
   const handleFollowToggle = async () => {
@@ -64,18 +72,18 @@ export default function Profile() {
     try {
       if (profile.is_following) {
         await api.delete(`/users/${profile.id}/follow`)
-        setProfile({
-          ...profile,
+        setProfile(prev => ({
+          ...prev,
           is_following: false,
-          followers_count: profile.followers_count - 1
-        })
+          followers_count: prev.followers_count - 1
+        }))
       } else {
         await api.post(`/users/${profile.id}/follow`)
-        setProfile({
-          ...profile,
+        setProfile(prev => ({
+          ...prev,
           is_following: true,
-          followers_count: profile.followers_count + 1
-        })
+          followers_count: prev.followers_count + 1
+        }))
       }
     } catch (error) {
       console.error('Failed to toggle follow:', error)
@@ -88,7 +96,7 @@ export default function Profile() {
   const handleUpdateProfile = async () => {
     try {
       const response = await api.patch('/users/me', editForm)
-      setProfile({ ...profile, ...response.data })
+      setProfile(prev => ({ ...prev, ...response.data }))
       updateUser(response.data)
       setIsEditing(false)
     } catch (error) {
@@ -108,7 +116,7 @@ export default function Profile() {
       const response = await api.post('/users/me/avatar', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
-      setProfile({ ...profile, ...response.data })
+      setProfile(prev => ({ ...prev, ...response.data }))
       updateUser(response.data)
     } catch (error) {
       console.error('Failed to upload avatar:', error)
@@ -127,7 +135,7 @@ export default function Profile() {
       const response = await api.post('/users/me/cover', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
-      setProfile({ ...profile, ...response.data })
+      setProfile(prev => ({ ...prev, ...response.data }))
       updateUser(response.data)
     } catch (error) {
       console.error('Failed to upload cover:', error)
@@ -248,25 +256,34 @@ export default function Profile() {
                   </button>
                 )
               ) : (
-                <button
-                  onClick={handleFollowToggle}
-                  disabled={isFollowLoading}
-                  className={profile.is_following ? 'btn btn-outline' : 'btn btn-primary'}
-                >
-                  {isFollowLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : profile.is_following ? (
-                    <>
-                      <UserMinus className="w-4 h-4" />
-                      Unfollow
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus className="w-4 h-4" />
-                      Follow
-                    </>
-                  )}
-                </button>
+                <>
+                  <button
+                    onClick={handleMessage}
+                    className="btn btn-secondary"
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    Message
+                  </button>
+                  <button
+                    onClick={handleFollowToggle}
+                    disabled={isFollowLoading}
+                    className={profile.is_following ? 'btn btn-outline' : 'btn btn-primary'}
+                  >
+                    {isFollowLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : profile.is_following ? (
+                      <>
+                        <UserMinus className="w-4 h-4" />
+                        Unfollow
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="w-4 h-4" />
+                        Follow
+                      </>
+                    )}
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -316,8 +333,8 @@ export default function Profile() {
           <button
             onClick={() => setActiveTab('posts')}
             className={`flex-1 flex items-center justify-center gap-2 py-4 font-medium transition-colors ${activeTab === 'posts'
-                ? 'text-[var(--color-primary)] border-b-2 border-[var(--color-primary)]'
-                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
+              ? 'text-[var(--color-primary)] border-b-2 border-[var(--color-primary)]'
+              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
               }`}
           >
             <Grid className="w-5 h-5" />

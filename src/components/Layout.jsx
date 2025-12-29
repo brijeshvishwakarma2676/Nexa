@@ -36,7 +36,7 @@ export default function Layout() {
         <Sidebar />
 
         {/* Main Content */}
-        <main className="flex-1 ml-0 md:ml-64 lg:ml-72 min-h-[calc(100vh-4rem)]">
+        <main className="flex-1 ml-0 lg:ml-72 min-h-[calc(100vh-4rem)]">
           <div className="max-w-2xl mx-auto px-4 py-6">
             <Outlet />
           </div>

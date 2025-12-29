@@ -14,7 +14,7 @@ export default function Sidebar() {
   ]
 
   return (
-    <aside className="hidden md:block fixed left-0 top-16 bottom-0 w-64 lg:w-72 bg-white border-r border-[var(--color-border)] overflow-y-auto">
+    <aside className="hidden lg:block fixed left-0 top-16 bottom-0 w-64 lg:w-72 bg-white border-r border-[var(--color-border)] overflow-y-auto">
       <div className="p-4">
         {/* User Info */}
         <div className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-[var(--color-primary-light)] to-white mb-6">

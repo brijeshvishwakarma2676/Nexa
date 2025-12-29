@@ -34,9 +34,7 @@ export default function Navbar() {
   const navItems = [
     { icon: Home, path: '/', label: 'Home' },
     { icon: Play, path: '/videos', label: 'Video' },
-    { icon: Store, path: '/marketplace', label: 'Marketplace' },
     { icon: Users, path: '/groups', label: 'Groups' },
-    { icon: Gamepad2, path: '/gaming', label: 'Gaming' },
   ]
 
   // Close dropdowns on outside click
@@ -111,7 +109,7 @@ export default function Navbar() {
 
   return (
     <nav className="fixed top-0 left-0 right-0 h-14 bg-white border-b border-[var(--color-border)] z-50 shadow-sm">
-      <div className="h-full max-w-[1920px] mx-auto px-4 flex items-center">
+      <div className="h-full max-w-[1920px] mx-auto px-4 flex lg:items-center justify-between lg:gap-4">
         {/* Left: Logo + Search */}
         <div className="flex items-center gap-2 w-[280px]">
           <Link to="/" className="flex-shrink-0">
@@ -182,7 +180,7 @@ export default function Navbar() {
         </div>
 
         {/* Center: Navigation Icons */}
-        <div className="flex-1 flex justify-center">
+        <div className="flex-1 lg:flex justify-center hidden">
           <div className="flex items-center gap-2">
             {navItems.map((item) => {
               const isActive = location.pathname === item.path

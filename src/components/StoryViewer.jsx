@@ -96,8 +96,15 @@ export default function StoryViewer() {
         <ChevronRight className="w-8 h-8" />
       </button>
 
-      {/* Story content */}
-      <div className="relative w-full max-w-md h-full max-h-[90vh] mx-4">
+      {/* Story content - 9:16 aspect ratio */}
+      <div
+        className="relative rounded-2xl overflow-hidden shadow-2xl"
+        style={{
+          width: 'min(400px, 90vw)',
+          aspectRatio: '9/16',
+          maxHeight: '90vh'
+        }}
+      >
         {/* Progress bars */}
         <div className="absolute top-4 left-4 right-4 flex gap-1 z-10">
           {currentGroup.stories.map((_, index) => (
@@ -129,10 +136,10 @@ export default function StoryViewer() {
               className="w-10 h-10 rounded-full avatar ring-2 ring-white"
             />
             <div>
-              <p className="text-white font-medium">
+              <p className="text-white font-medium drop-shadow-lg">
                 {currentGroup.user.display_name || currentGroup.user.username}
               </p>
-              <p className="text-white/70 text-sm">
+              <p className="text-white/70 text-sm drop-shadow">
                 {formatDistanceToNow(new Date(currentStory.created_at), { addSuffix: true })}
               </p>
             </div>
@@ -146,16 +153,18 @@ export default function StoryViewer() {
           </button>
         </div>
 
-        {/* Story image or text */}
+        {/* Story image or text - click areas for navigation */}
         <div
-          className="w-full h-full rounded-2xl overflow-hidden flex items-center justify-center"
+          className="w-full h-full"
           onClick={(e) => {
             const rect = e.currentTarget.getBoundingClientRect()
             const x = e.clientX - rect.left
-            if (x < rect.width / 2) {
+            if (x < rect.width / 3) {
               prevStory()
-            } else {
+            } else if (x > rect.width * 2 / 3) {
               nextStory()
+            } else {
+              setIsPaused((p) => !p)
             }
           }}
         >
@@ -163,11 +172,11 @@ export default function StoryViewer() {
             <img
               src={currentStory.image_url}
               alt="Story"
-              className="w-full h-full object-contain"
+              className="w-full h-full object-cover"
             />
           ) : (
-            <div className="w-full h-full gradient-primary flex items-center justify-center p-8">
-              <p className="text-white text-2xl font-medium text-center">
+            <div className="w-full h-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-secondary)] flex items-center justify-center p-8">
+              <p className="text-white text-2xl font-bold text-center leading-relaxed drop-shadow-lg">
                 {currentStory.content}
               </p>
             </div>
@@ -175,7 +184,7 @@ export default function StoryViewer() {
         </div>
 
         {/* Story counter */}
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-sm">
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-sm drop-shadow">
           {currentStoryIndex + 1} / {totalStories}
         </div>
       </div>
