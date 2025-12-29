@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { X, Image, Type, Loader2, ChevronLeft, Camera, Sparkles } from 'lucide-react'
+import { X, Type, Loader2, ChevronLeft, Camera, Sparkles, Move } from 'lucide-react'
 import { useStoryStore } from '../stores/storyStore'
 import { useAuthStore } from '../stores/authStore'
 import api from '../services/api'
@@ -11,7 +11,7 @@ const BACKGROUND_GRADIENTS = [
     { id: 4, gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)' },
     { id: 5, gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)' },
     { id: 6, gradient: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)' },
-    { id: 7, gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
+    { id: 7, gradient: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)' },
     { id: 8, gradient: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)' },
 ]
 
@@ -19,8 +19,8 @@ export default function CreateStory({ isOpen, onClose }) {
     const { user } = useAuthStore()
     const { addStory, fetchStories } = useStoryStore()
 
-    const [step, setStep] = useState('select') // 'select', 'edit'
-    const [mode, setMode] = useState(null) // 'image' or 'text'
+    const [step, setStep] = useState('select')
+    const [mode, setMode] = useState(null)
     const [imageUrl, setImageUrl] = useState(null)
     const [imageFile, setImageFile] = useState(null)
     const [textContent, setTextContent] = useState('')
@@ -28,13 +28,20 @@ export default function CreateStory({ isOpen, onClose }) {
     const [isPosting, setIsPosting] = useState(false)
     const [error, setError] = useState(null)
 
+    // Text position state (percentage-based for responsiveness)
+    const [textPosition, setTextPosition] = useState({ x: 50, y: 50 })
+    const [isDragging, setIsDragging] = useState(false)
+    const [isEditing, setIsEditing] = useState(false)
+
     const fileInputRef = useRef(null)
     const textInputRef = useRef(null)
+    const containerRef = useRef(null)
+    const dragStartRef = useRef({ x: 0, y: 0 })
 
-    // Focus text input when in text mode
+    // Focus text input when entering edit mode
     useEffect(() => {
-        if (step === 'edit' && mode === 'text' && textInputRef.current) {
-            textInputRef.current.focus()
+        if (step === 'edit' && mode === 'text') {
+            setIsEditing(true)
         }
     }, [step, mode])
 
@@ -47,7 +54,9 @@ export default function CreateStory({ isOpen, onClose }) {
             setImageFile(null)
             setTextContent('')
             setSelectedBg(0)
+            setTextPosition({ x: 50, y: 50 })
             setError(null)
+            setIsEditing(false)
         }
     }, [isOpen])
 
@@ -75,6 +84,7 @@ export default function CreateStory({ isOpen, onClose }) {
     const handleTextMode = () => {
         setMode('text')
         setStep('edit')
+        setTextPosition({ x: 50, y: 50 })
     }
 
     const handleBack = () => {
@@ -84,9 +94,60 @@ export default function CreateStory({ isOpen, onClose }) {
             setImageUrl(null)
             setImageFile(null)
             setTextContent('')
+            setTextPosition({ x: 50, y: 50 })
         } else {
             onClose()
         }
+    }
+
+    // Drag handlers
+    const getPositionFromEvent = (e, container) => {
+        const rect = container.getBoundingClientRect()
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY
+
+        const x = ((clientX - rect.left) / rect.width) * 100
+        const y = ((clientY - rect.top) / rect.height) * 100
+
+        return {
+            x: Math.max(10, Math.min(90, x)),
+            y: Math.max(10, Math.min(90, y))
+        }
+    }
+
+    const handleDragStart = (e) => {
+        if (isEditing) return
+        e.preventDefault()
+        setIsDragging(true)
+
+        const container = containerRef.current
+        if (!container) return
+
+        const pos = getPositionFromEvent(e, container)
+        dragStartRef.current = pos
+    }
+
+    const handleDragMove = (e) => {
+        if (!isDragging || !containerRef.current) return
+        e.preventDefault()
+
+        const pos = getPositionFromEvent(e, containerRef.current)
+        setTextPosition(pos)
+    }
+
+    const handleDragEnd = () => {
+        setIsDragging(false)
+    }
+
+    const handleTextClick = () => {
+        if (!isDragging) {
+            setIsEditing(true)
+            setTimeout(() => textInputRef.current?.focus(), 50)
+        }
+    }
+
+    const handleTextBlur = () => {
+        setIsEditing(false)
     }
 
     const handlePost = async () => {
@@ -159,7 +220,7 @@ export default function CreateStory({ isOpen, onClose }) {
                         )}
                     </button>
                 ) : (
-                    <div className="w-16" /> // Spacer
+                    <div className="w-16" />
                 )}
             </div>
 
@@ -168,7 +229,6 @@ export default function CreateStory({ isOpen, onClose }) {
                 {/* Select Mode */}
                 {step === 'select' && (
                     <div className="w-full max-w-md px-6 space-y-4">
-                        {/* Photo Option */}
                         <button
                             onClick={() => fileInputRef.current?.click()}
                             className="w-full p-6 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 transition-all transform hover:scale-[1.02] active:scale-[0.98]"
@@ -184,7 +244,6 @@ export default function CreateStory({ isOpen, onClose }) {
                             </div>
                         </button>
 
-                        {/* Text Option */}
                         <button
                             onClick={handleTextMode}
                             className="w-full p-6 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 transition-all transform hover:scale-[1.02] active:scale-[0.98]"
@@ -210,16 +269,22 @@ export default function CreateStory({ isOpen, onClose }) {
                     </div>
                 )}
 
-                {/* Edit Mode - Preview */}
+                {/* Edit Mode */}
                 {step === 'edit' && (
                     <div className="relative w-full h-full flex items-center justify-center px-4">
-                        {/* Story Preview Container - 9:16 aspect ratio */}
+                        {/* Story Preview Container */}
                         <div
-                            className="relative rounded-2xl overflow-hidden shadow-2xl w-full max-w-[360px] mx-auto"
+                            ref={containerRef}
+                            className="relative rounded-2xl overflow-hidden shadow-2xl w-full max-w-[360px] mx-auto touch-none"
                             style={{
                                 aspectRatio: '9/16',
                                 maxHeight: 'calc(100vh - 160px)'
                             }}
+                            onMouseMove={handleDragMove}
+                            onMouseUp={handleDragEnd}
+                            onMouseLeave={handleDragEnd}
+                            onTouchMove={handleDragMove}
+                            onTouchEnd={handleDragEnd}
                         >
                             {/* Image Preview */}
                             {mode === 'image' && imageUrl && (
@@ -230,25 +295,57 @@ export default function CreateStory({ isOpen, onClose }) {
                                 />
                             )}
 
-                            {/* Text Preview */}
+                            {/* Text Story Background */}
                             {mode === 'text' && (
                                 <div
-                                    className="w-full h-full flex items-center justify-center p-6"
+                                    className="w-full h-full"
                                     style={{ background: BACKGROUND_GRADIENTS[selectedBg].gradient }}
+                                    onClick={() => !isEditing && setIsEditing(true)}
+                                />
+                            )}
+
+                            {/* Draggable Text Element */}
+                            {mode === 'text' && (
+                                <div
+                                    className={`absolute cursor-move select-none ${isDragging ? 'scale-105' : ''} transition-transform`}
+                                    style={{
+                                        left: `${textPosition.x}%`,
+                                        top: `${textPosition.y}%`,
+                                        transform: 'translate(-50%, -50%)',
+                                        maxWidth: '80%',
+                                        zIndex: 20
+                                    }}
+                                    onMouseDown={handleDragStart}
+                                    onTouchStart={handleDragStart}
+                                    onClick={handleTextClick}
                                 >
-                                    <textarea
-                                        ref={textInputRef}
-                                        value={textContent}
-                                        onChange={(e) => setTextContent(e.target.value)}
-                                        placeholder="Start typing..."
-                                        maxLength={280}
-                                        className="w-full text-center text-2xl md:text-3xl font-bold text-white bg-transparent border-none outline-none resize-none placeholder:text-white/50"
-                                        style={{
-                                            textShadow: '0 2px 10px rgba(0,0,0,0.3)',
-                                            height: 'auto',
-                                            minHeight: '120px'
-                                        }}
-                                    />
+                                    {isEditing ? (
+                                        <textarea
+                                            ref={textInputRef}
+                                            value={textContent}
+                                            onChange={(e) => setTextContent(e.target.value)}
+                                            onBlur={handleTextBlur}
+                                            placeholder="Tap to type..."
+                                            maxLength={280}
+                                            autoFocus
+                                            className="text-center text-xl md:text-2xl font-bold text-white bg-black/30 backdrop-blur-sm rounded-xl p-4 border-2 border-white/50 outline-none resize-none w-64 md:w-72"
+                                            style={{
+                                                textShadow: '0 2px 10px rgba(0,0,0,0.5)',
+                                                minHeight: '80px'
+                                            }}
+                                        />
+                                    ) : (
+                                        <div
+                                            className="text-center text-xl md:text-2xl font-bold text-white px-4 py-3 rounded-xl bg-black/20 backdrop-blur-sm min-w-[120px]"
+                                            style={{ textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}
+                                        >
+                                            {textContent || 'Tap to type'}
+                                            <div className="flex items-center justify-center gap-1 mt-2 text-white/60 text-xs">
+                                                <Move className="w-3 h-3" />
+                                                <span>Drag to move</span>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
@@ -270,7 +367,7 @@ export default function CreateStory({ isOpen, onClose }) {
 
                         {/* Background Selector for Text Mode */}
                         {mode === 'text' && (
-                            <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 px-4 overflow-x-auto">
+                            <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 px-4 overflow-x-auto pb-2">
                                 {BACKGROUND_GRADIENTS.map((bg, index) => (
                                     <button
                                         key={bg.id}
@@ -283,7 +380,7 @@ export default function CreateStory({ isOpen, onClose }) {
                             </div>
                         )}
 
-                        {/* Change Image Button for Image Mode */}
+                        {/* Change Image Button */}
                         {mode === 'image' && (
                             <button
                                 onClick={() => fileInputRef.current?.click()}
@@ -304,7 +401,6 @@ export default function CreateStory({ isOpen, onClose }) {
                 </div>
             )}
 
-            {/* Hidden File Input */}
             <input
                 ref={fileInputRef}
                 type="file"
