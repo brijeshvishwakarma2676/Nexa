@@ -134,9 +134,19 @@ export const useChatStore = create((set, get) => ({
     const token = localStorage.getItem('access_token')
     if (!token) return
 
-    // Use relative path so Vite proxy handles it in dev, or use absolute in production
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const wsUrl = `${wsProtocol}//${window.location.host}/ws/chat?token=${token}`
+    // Determine WebSocket URL
+    let wsUrl
+    if (import.meta.env.VITE_API_URL) {
+      // Production: Use VITE_API_URL (e.g. https://backend.com -> wss://backend.com/ws/chat)
+      const apiUrl = new URL(import.meta.env.VITE_API_URL)
+      const wsProtocol = apiUrl.protocol === 'https:' ? 'wss:' : 'ws:'
+      wsUrl = `${wsProtocol}//${apiUrl.host}/ws/chat?token=${token}`
+    } else {
+      // Local: Use relative path (Vite proxy handles it)
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      wsUrl = `${wsProtocol}//${window.location.host}/ws/chat?token=${token}`
+    }
+
     const ws = new WebSocket(wsUrl)
 
     ws.onopen = () => {

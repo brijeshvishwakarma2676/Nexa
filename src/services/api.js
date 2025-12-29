@@ -1,7 +1,12 @@
 import axios from 'axios'
 
+// Use VITE_API_URL from .env (production) or default to /api (local proxy)
+const baseURL = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL}/api`
+  : '/api'
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -36,7 +41,7 @@ api.interceptors.response.use(
         }
 
         // Try to refresh
-        const response = await axios.post('/api/auth/refresh', {
+        const response = await axios.post(`${baseURL}/auth/refresh`, {
           refresh_token: refreshToken,
         })
 
