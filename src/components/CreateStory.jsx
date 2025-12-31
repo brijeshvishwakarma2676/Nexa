@@ -412,7 +412,7 @@ export default function CreateStory({ isOpen, onClose }) {
                     })}
 
                     {/* Moveable */}
-                    {selectedLayerId && getTarget() && (
+                    {selectedLayerId && getTarget() && !editingLayerId && !croppingLayerId && (
                         <Moveable
                             target={getTarget()}
                             container={containerRef.current}
