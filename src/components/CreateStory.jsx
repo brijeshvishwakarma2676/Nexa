@@ -27,9 +27,10 @@ const MAX_SCALE = 3.0
 // Individual text element with drag/resize/rotate via pointer events
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function TextLayer({ layer, isSelected, onSelect, onUpdate, onDelete, containerRef }) {
+function TextLayer({ layer, isSelected, onSelect, onUpdate, onDelete, onEdit, containerRef }) {
     const elementRef = useRef(null)
     const pointersRef = useRef(new Map()) // Track active pointers
+    const lastTapRef = useRef(0) // For double-tap detection
     const gestureRef = useRef({
         startX: 0, startY: 0,
         startLayerX: 0, startLayerY: 0,
@@ -147,12 +148,26 @@ function TextLayer({ layer, isSelected, onSelect, onUpdate, onDelete, containerR
         pointersRef.current.delete(e.pointerId)
         elementRef.current?.releasePointerCapture(e.pointerId)
 
+        // Double-tap detection for editing
+        const now = Date.now()
+        const gesture = gestureRef.current
+        const didDrag = Math.abs(e.clientX - gesture.startX) > 5 || Math.abs(e.clientY - gesture.startY) > 5
+
+        if (!didDrag && pointersRef.current.size === 0) {
+            if (now - lastTapRef.current < 300) {
+                // Double tap detected - trigger edit
+                onEdit(layer.id)
+                lastTapRef.current = 0
+            } else {
+                lastTapRef.current = now
+            }
+        }
+
         // Reset gesture when all pointers released
         if (pointersRef.current.size === 0) {
             gestureRef.current.gestureType = null
         } else if (pointersRef.current.size === 1) {
             // Dropped to single pointer: switch back to drag mode
-            const gesture = gestureRef.current
             const remaining = Array.from(pointersRef.current.values())[0]
             gesture.gestureType = 'drag'
             gesture.startX = remaining.clientX
@@ -187,8 +202,8 @@ function TextLayer({ layer, isSelected, onSelect, onUpdate, onDelete, containerR
         >
             <div
                 className={`px-4 py-2 rounded-lg ${isSelected
-                        ? 'bg-black/40 ring-2 ring-white ring-offset-2 ring-offset-transparent'
-                        : 'bg-black/20'
+                    ? 'bg-black/40 ring-2 ring-white ring-offset-2 ring-offset-transparent'
+                    : 'bg-black/20'
                     } backdrop-blur-sm`}
             >
                 <p
@@ -295,7 +310,7 @@ export default function CreateStory({ isOpen, onClose }) {
     }, [])
 
     // Double-tap to edit text
-    const handleLayerDoubleClick = useCallback((id) => {
+    const handleLayerEdit = useCallback((id) => {
         const layer = textLayers.find(l => l.id === id)
         if (layer) {
             setEditingLayerId(id)
@@ -515,6 +530,7 @@ export default function CreateStory({ isOpen, onClose }) {
                                     onSelect={handleLayerSelect}
                                     onUpdate={updateTextLayer}
                                     onDelete={deleteTextLayer}
+                                    onEdit={handleLayerEdit}
                                     containerRef={containerRef}
                                 />
                             ))}
