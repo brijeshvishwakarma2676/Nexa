@@ -26,18 +26,18 @@ export default function Layout() {
   }, [connectWebSocket, disconnectWebSocket, fetchUnreadCount])
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg)]">
+    <div className="min-h-screen bg-(--color-bg)">
       {/* Top Navigation */}
       <Navbar />
 
       {/* Main Content Area */}
       <div className="flex pt-16">
         {/* Left Sidebar */}
-        <Sidebar />
+        {/* <Sidebar /> */}
 
         {/* Main Content */}
-        <main className="flex-1 ml-0 lg:ml-72 min-h-[calc(100vh-4rem)]">
-          <div className="max-w-2xl mx-auto px-4 py-6">
+        <main className="flex-1 min-h-[calc(100vh-4rem)]">
+          <div className="max-w-2xl mx-auto ">
             <Outlet />
           </div>
         </main>

@@ -57,7 +57,7 @@ export default function Comments({ postId }) {
   }
 
   return (
-    <div className="border-t border-[var(--color-border)]">
+    <div className="border-t border-(--color-border)">
       {/* Comment input */}
       <form onSubmit={handleSubmit} className="p-4 flex gap-3">
         <img
@@ -91,10 +91,10 @@ export default function Comments({ postId }) {
       <div className="px-4 pb-4 space-y-3">
         {isLoading ? (
           <div className="flex justify-center py-4">
-            <Loader2 className="w-6 h-6 text-[var(--color-primary)] animate-spin" />
+            <Loader2 className="w-6 h-6 text-(--color-primary) animate-spin" />
           </div>
         ) : comments.length === 0 ? (
-          <p className="text-center text-[var(--color-text-muted)] py-4">
+          <p className="text-center text-(--color-text-muted) py-4">
             No comments yet. Be the first to comment!
           </p>
         ) : (
@@ -108,18 +108,18 @@ export default function Comments({ postId }) {
                 />
               </Link>
               <div className="flex-1">
-                <div className="bg-[var(--color-bg)] rounded-2xl px-4 py-2">
+                <div className="bg-(--color-bg) rounded-2xl px-4 py-2">
                   <Link
                     to={`/profile/${comment.author.username}`}
-                    className="font-semibold text-sm text-[var(--color-text-primary)] hover:underline"
+                    className="font-semibold text-sm text-(--color-text-primary) hover:underline"
                   >
                     {comment.author.display_name || comment.author.username}
                   </Link>
-                  <p className="text-[var(--color-text-primary)] text-sm">
+                  <p className="text-(--color-text-primary) text-sm">
                     {comment.content}
                   </p>
                 </div>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1 ml-4">
+                <p className="text-xs text-(--color-text-muted) mt-1 ml-4">
                   {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
                 </p>
               </div>

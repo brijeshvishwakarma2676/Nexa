@@ -14,20 +14,20 @@ export default function Sidebar() {
   ]
 
   return (
-    <aside className="hidden lg:block fixed left-0 top-16 bottom-0 w-64 lg:w-72 bg-white border-r border-[var(--color-border)] overflow-y-auto">
+    <aside className="hidden lg:block fixed left-0 top-16 bottom-0 w-64 lg:w-72 bg-white border-r border-(--color-border) overflow-y-auto">
       <div className="p-4">
         {/* User Info */}
-        <div className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-[var(--color-primary-light)] to-white mb-6">
+        <div className="flex items-center gap-3 p-3 rounded-xl bg-linear-to-r from-(--color-primary-light) to-white mb-6">
           <img
             src={user?.avatar_url || `https://ui-avatars.com/api/?name=${user?.username}&background=4F46E5&color=fff`}
             alt={user?.username}
             className="w-12 h-12 rounded-full avatar ring-2 ring-white"
           />
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-[var(--color-text-primary)] truncate">
+            <p className="font-semibold text-(--color-text-primary) truncate">
               {user?.display_name || user?.username}
             </p>
-            <p className="text-sm text-[var(--color-text-muted)] truncate">
+            <p className="text-sm text-(--color-text-muted) truncate">
               @{user?.username}
             </p>
           </div>
@@ -42,8 +42,8 @@ export default function Sidebar() {
               end={item.to === '/'}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${isActive
-                  ? 'bg-[var(--color-primary)] text-white shadow-lg shadow-[var(--color-primary)]/25'
-                  : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] hover:text-[var(--color-primary)]'
+                  ? 'bg-(--color-primary) text-white shadow-lg shadow-[var(--color-primary)]/25'
+                  : 'text-(--color-text-secondary) hover:bg-(--color-bg) hover:text-(--color-primary)'
                 }`
               }
             >
@@ -54,8 +54,8 @@ export default function Sidebar() {
         </nav>
 
         {/* Footer */}
-        <div className="mt-8 pt-6 border-t border-[var(--color-border)]">
-          <p className="text-xs text-[var(--color-text-muted)] text-center">
+        <div className="mt-8 pt-6 border-t border-(--color-border)">
+          <p className="text-xs text-(--color-text-muted) text-center">
             © 2024 Nexa
           </p>
         </div>

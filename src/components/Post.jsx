@@ -76,7 +76,7 @@ export default function Post({ post }) {
   }
 
   return (
-    <article className="bg-white rounded-lg shadow-sm border border-[var(--color-border)] overflow-hidden animate-fadeIn">
+    <article className="bg-white rounded-lg shadow-sm border border-(--color-border) overflow-hidden animate-fadeIn">
       {/* Header */}
       <div className="p-3 flex items-start justify-between">
         <div className="flex gap-3">
@@ -91,23 +91,23 @@ export default function Post({ post }) {
             <div className="flex items-center gap-1 flex-wrap">
               <Link
                 to={`/profile/${post.author.username}`}
-                className="font-semibold text-[var(--color-text-primary)] hover:underline text-[15px]"
+                className="font-semibold text-(--color-text-primary) hover:underline text-[15px]"
               >
                 {post.author.display_name || post.author.username}
               </Link>
               {!isOwner && !isFollowing && (
                 <>
-                  <span className="text-[var(--color-text-muted)]">·</span>
+                  <span className="text-(--color-text-muted)">·</span>
                   <button
                     onClick={handleFollow}
-                    className="text-[var(--color-primary)] font-semibold text-[15px] hover:underline"
+                    className="text-(--color-primary) font-semibold text-[15px] hover:underline"
                   >
                     Follow
                   </button>
                 </>
               )}
             </div>
-            <div className="flex items-center gap-1 text-xs text-[var(--color-text-muted)]">
+            <div className="flex items-center gap-1 text-xs text-(--color-text-muted)">
               <span>{formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}</span>
               <span>·</span>
               {post.visibility === 'public' ? (
@@ -124,20 +124,20 @@ export default function Post({ post }) {
           <div className="relative">
             <button
               onClick={() => setShowMenu(!showMenu)}
-              className="p-2 rounded-full hover:bg-[var(--color-bg)] transition-colors"
+              className="p-2 rounded-full hover:bg-(--color-bg) transition-colors"
             >
-              <MoreHorizontal className="w-5 h-5 text-[var(--color-text-muted)]" />
+              <MoreHorizontal className="w-5 h-5 text-(--color-text-muted)" />
             </button>
 
             {showMenu && (
-              <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-[var(--color-border)] py-1 z-10 animate-fadeIn">
+              <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-(--color-border) py-1 z-10 animate-fadeIn">
                 {!isOwner && !isFollowing && (
                   <button
                     onClick={() => {
                       handleFollow()
                       setShowMenu(false)
                     }}
-                    className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-[var(--color-bg)] transition-colors"
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-(--color-bg) transition-colors"
                   >
                     <UserPlus className="w-4 h-4" />
                     Follow @{post.author.username}
@@ -149,7 +149,7 @@ export default function Post({ post }) {
                       handleDelete()
                       setShowMenu(false)
                     }}
-                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-[var(--color-error)] hover:bg-red-50 transition-colors"
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-(--color-error) hover:bg-red-50 transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
                     Delete post
@@ -162,10 +162,10 @@ export default function Post({ post }) {
           {/* Close/Hide button */}
           <button
             onClick={handleHidePost}
-            className="p-2 rounded-full hover:bg-[var(--color-bg)] transition-colors"
+            className="p-2 rounded-full hover:bg-(--color-bg) transition-colors"
             title="Hide post"
           >
-            <X className="w-5 h-5 text-[var(--color-text-muted)]" />
+            <X className="w-5 h-5 text-(--color-text-muted)" />
           </button>
         </div>
       </div>
@@ -173,13 +173,13 @@ export default function Post({ post }) {
       {/* Content */}
       {post.content && (
         <div className="px-4 pb-3">
-          <p className="text-[var(--color-text-primary)] whitespace-pre-wrap text-[15px]">
+          <p className="text-(--color-text-primary) whitespace-pre-wrap text-[15px]">
             {displayContent}
           </p>
           {shouldTruncate && (
             <button
               onClick={() => setIsExpanded(true)}
-              className="text-[var(--color-text-muted)] hover:underline font-medium mt-1"
+              className="text-(--color-text-muted) hover:underline font-medium mt-1"
             >
               See more
             </button>
@@ -189,7 +189,7 @@ export default function Post({ post }) {
 
       {/* Image */}
       {post.image_url && (
-        <div className="border-t border-[var(--color-border)]">
+        <div className="border-t border-(--color-border)">
           <img
             src={post.image_url}
             alt="Post image"
@@ -199,7 +199,7 @@ export default function Post({ post }) {
       )}
 
       {/* Engagement Stats */}
-      <div className="px-4 py-2 flex items-center justify-between text-sm text-[var(--color-text-muted)]">
+      <div className="px-4 py-2 flex items-center justify-between text-sm text-(--color-text-muted)">
         {/* Reactions */}
         <div className="flex items-center gap-1">
           {post.likes_count > 0 && (
@@ -230,12 +230,12 @@ export default function Post({ post }) {
       </div>
 
       {/* Action Buttons */}
-      <div className="px-3 py-1 border-t border-[var(--color-border)] flex">
+      <div className="px-3 py-1 border-t border-(--color-border) flex">
         <button
           onClick={handleLike}
           className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg transition-colors font-medium ${post.is_liked
-              ? 'text-[var(--color-primary)]'
-              : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)]'
+              ? 'text-(--color-primary)'
+              : 'text-(--color-text-secondary) hover:bg-(--color-bg)'
             }`}
         >
           <ThumbsUp
@@ -247,8 +247,8 @@ export default function Post({ post }) {
         <button
           onClick={() => setShowComments(!showComments)}
           className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg transition-colors font-medium ${showComments
-              ? 'text-[var(--color-primary)]'
-              : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)]'
+              ? 'text-(--color-primary)'
+              : 'text-(--color-text-secondary) hover:bg-(--color-bg)'
             }`}
         >
           <MessageCircle className="w-5 h-5" />
@@ -258,7 +258,7 @@ export default function Post({ post }) {
         <button
           onClick={handleShare}
           disabled={isSharing}
-          className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg transition-colors font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] disabled:opacity-50"
+          className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg transition-colors font-medium text-(--color-text-secondary) hover:bg-(--color-bg) disabled:opacity-50"
         >
           <Share2 className="w-5 h-5" />
           <span>{isSharing ? 'Sharing...' : 'Share'}</span>

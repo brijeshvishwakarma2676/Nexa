@@ -9,6 +9,7 @@ import { useNotificationStore } from '../stores/notificationStore'
 import { useChatStore } from '../stores/chatStore'
 import api from '../services/api'
 import { formatDistanceToNow } from 'date-fns'
+import  logo from '../assets/nexa_logo.png'
 
 export default function Navbar() {
   const navigate = useNavigate()
@@ -35,6 +36,7 @@ export default function Navbar() {
     { icon: Home, path: '/', label: 'Home' },
     { icon: Play, path: '/videos', label: 'Video' },
     { icon: Users, path: '/groups', label: 'Groups' },
+    { icon: MessageCircle, path: '/chat', label: 'Chat' },
   ]
 
   // Close dropdowns on outside click
@@ -108,7 +110,7 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="fixed top-0 left-0 right-0 h-14 bg-white border-b border-[var(--color-border)] z-50 shadow-sm">
+    <nav className="fixed top-0 left-0 right-0 h-14 bg-white border-b border-(--color-border) z-50 shadow-sm">
       <div className="h-full max-w-[1920px] mx-auto px-4 flex lg:items-center justify-between lg:gap-4">
         {/* Left: Logo + Search */}
         <div className="flex items-center gap-2 w-[280px]">
@@ -121,33 +123,33 @@ export default function Navbar() {
           {/* Search */}
           <div className="relative flex-1" ref={searchRef}>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)]" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-(--color-text-muted)" />
               <input
                 type="text"
                 placeholder="Search Nexa"
                 value={searchQuery}
                 onChange={(e) => handleSearch(e.target.value)}
                 onFocus={() => searchQuery.length >= 2 && setShowSearch(true)}
-                className="w-full pl-10 pr-4 py-2 rounded-full bg-[var(--color-bg)] border-none text-sm focus:ring-2 focus:ring-[var(--color-primary)] focus:bg-white transition-all"
+                className="w-full pl-10 pr-4 py-2 rounded-full bg-(--color-bg) text-sm focus:ring-2 focus:ring-[var(--color-primary)] focus:bg-white transition-all border border-(--color-border)"
               />
             </div>
 
             {/* Search Results Dropdown */}
             {showSearch && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-lg border border-[var(--color-border)] py-2 max-h-[400px] overflow-y-auto animate-fadeIn">
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-lg border border-(--color-border) py-2 max-h-[600px] w-[280px] overflow-y-auto animate-fadeIn">
                 {/* Header with back button */}
-                <div className="flex items-center gap-2 px-3 pb-2 border-b border-[var(--color-border)]">
+                <div className="flex items-center gap-2 px-3 pb-2 border-b border-(--color-border)">
                   <button
                     onClick={clearSearch}
-                    className="p-2 rounded-full hover:bg-[var(--color-bg)] transition-colors"
+                    className="p-2 rounded-full hover:bg-(--color-bg) transition-colors"
                   >
-                    <ArrowLeft className="w-5 h-5 text-[var(--color-text-secondary)]" />
+                    <ArrowLeft className="w-5 h-5 text-(--color-text-secondary)" />
                   </button>
-                  <span className="text-sm text-[var(--color-text-muted)]">{searchQuery}</span>
+                  <span className="text-sm text-(--color-text-muted)">{searchQuery}</span>
                 </div>
 
                 {(!Array.isArray(searchResults) || searchResults.length === 0) ? (
-                  <p className="px-4 py-6 text-center text-[var(--color-text-muted)]">
+                  <p className="px-4 py-6 text-center text-(--color-text-muted)">
                     No results found
                   </p>
                 ) : (
@@ -156,7 +158,7 @@ export default function Navbar() {
                       key={result.id}
                       to={`/profile/${result.username}`}
                       onClick={clearSearch}
-                      className="flex items-center gap-3 px-4 py-2 hover:bg-[var(--color-bg)] transition-colors"
+                      className="flex items-center gap-3 px-4 py-2 hover:bg-(--color-bg) transition-colors"
                     >
                       <img
                         src={result.avatar_url || `https://ui-avatars.com/api/?name=${result.username}&background=4F46E5&color=fff`}
@@ -164,10 +166,10 @@ export default function Navbar() {
                         className="w-9 h-9 rounded-full"
                       />
                       <div>
-                        <p className="font-semibold text-[var(--color-text-primary)] text-sm">
+                        <p className="font-semibold text-(--color-text-primary) text-sm">
                           {result.display_name || result.username}
                         </p>
-                        <p className="text-xs text-[var(--color-text-muted)]">
+                        <p className="text-xs text-(--color-text-muted)">
                           {result.relationship_status || 'User'}
                         </p>
                       </div>
@@ -190,15 +192,15 @@ export default function Navbar() {
                   key={item.path}
                   to={item.path}
                   className={`relative px-8 py-2 rounded-lg transition-colors group ${isActive
-                    ? 'text-[var(--color-primary)]'
-                    : 'text-[var(--color-text-muted)] hover:bg-[var(--color-bg)]'
+                    ? 'text-(--color-primary)'
+                    : 'text-(--color-text-muted) hover:bg-(--color-bg)'
                     }`}
                   title={item.label}
                 >
                   <Icon className="w-6 h-6" />
                   {/* Active indicator bar */}
                   {isActive && (
-                    <div className="absolute bottom-[-8px] left-0 right-0 h-[3px] bg-[var(--color-primary)] rounded-t-full" />
+                    <div className="absolute bottom-[-8px] left-0 right-0 h-[3px] bg-(--color-primary) rounded-t-full" />
                   )}
                 </Link>
               )
@@ -209,16 +211,16 @@ export default function Navbar() {
         {/* Right: Actions */}
         <div className="flex items-center gap-1 w-[280px] justify-end">
           {/* Menu Grid */}
-          <button className="p-2.5 rounded-full bg-[var(--color-bg)] hover:bg-gray-200 transition-colors">
-            <Grid3X3 className="w-5 h-5 text-[var(--color-text-primary)]" />
+          <button className="p-2.5 rounded-full bg-(--color-bg) hover:bg-gray-200 transition-colors">
+            <Grid3X3 className="w-5 h-5 text-(--color-text-primary)" />
           </button>
 
           {/* Messages */}
           <Link
             to="/chat"
-            className="relative p-2.5 rounded-full bg-[var(--color-bg)] hover:bg-gray-200 transition-colors"
+            className="relative p-2.5 rounded-full bg-(--color-bg) hover:bg-gray-200 transition-colors"
           >
-            <MessageCircle className="w-5 h-5 text-[var(--color-text-primary)]" />
+            <MessageCircle className="w-5 h-5 text-(--color-text-primary)" />
             {unreadMessages > 0 && (
               <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold text-white bg-red-500 rounded-full px-1">
                 {unreadMessages > 99 ? '99+' : unreadMessages}
@@ -230,9 +232,9 @@ export default function Navbar() {
           <div className="relative" ref={notifRef}>
             <button
               onClick={handleOpenNotifications}
-              className="relative p-2.5 rounded-full bg-[var(--color-bg)] hover:bg-gray-200 transition-colors"
+              className="relative p-2.5 rounded-full bg-(--color-bg) hover:bg-gray-200 transition-colors"
             >
-              <Bell className="w-5 h-5 text-[var(--color-text-primary)]" />
+              <Bell className="w-5 h-5 text-(--color-text-primary)" />
               {unreadCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold text-white bg-red-500 rounded-full px-1">
                   {unreadCount > 99 ? '99+' : unreadCount}
@@ -242,13 +244,13 @@ export default function Navbar() {
 
             {/* Notifications Dropdown */}
             {showNotifications && (
-              <div className="absolute top-full right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-[var(--color-border)] py-2 max-h-96 overflow-y-auto animate-fadeIn">
-                <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--color-border)]">
+              <div className="absolute top-full right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-(--color-border) py-2 max-h-96 overflow-y-auto animate-fadeIn">
+                <div className="flex items-center justify-between px-4 py-2 border-b border-(--color-border)">
                   <h3 className="font-bold text-xl">Notifications</h3>
                   {unreadCount > 0 && (
                     <button
                       onClick={markAllAsRead}
-                      className="text-sm text-[var(--color-primary)] hover:underline"
+                      className="text-sm text-(--color-primary) hover:underline"
                     >
                       Mark all read
                     </button>
@@ -256,7 +258,7 @@ export default function Navbar() {
                 </div>
 
                 {notifications.length === 0 ? (
-                  <p className="px-4 py-8 text-center text-[var(--color-text-muted)]">
+                  <p className="px-4 py-8 text-center text-(--color-text-muted)">
                     No notifications yet
                   </p>
                 ) : (
@@ -264,7 +266,7 @@ export default function Navbar() {
                     <button
                       key={notification.id}
                       onClick={() => handleNotificationClick(notification)}
-                      className={`w-full flex items-start gap-3 px-4 py-3 hover:bg-[var(--color-bg)] transition-colors text-left ${!notification.read ? 'bg-[var(--color-primary-light)]' : ''
+                      className={`w-full flex items-start gap-3 px-4 py-3 hover:bg-(--color-bg) transition-colors text-left ${!notification.read ? 'bg-(--color-primary-light)' : ''
                         }`}
                     >
                       <img
@@ -273,15 +275,15 @@ export default function Navbar() {
                         className="w-10 h-10 rounded-full flex-shrink-0"
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-[var(--color-text-primary)]">
+                        <p className="text-sm text-(--color-text-primary)">
                           {notification.message}
                         </p>
-                        <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                        <p className="text-xs text-(--color-text-muted) mt-1">
                           {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
                         </p>
                       </div>
                       {!notification.read && (
-                        <span className="w-3 h-3 rounded-full bg-[var(--color-primary)] flex-shrink-0 mt-2" />
+                        <span className="w-3 h-3 rounded-full bg-(--color-primary) flex-shrink-0 mt-2" />
                       )}
                     </button>
                   ))
@@ -305,23 +307,115 @@ export default function Navbar() {
 
             {/* Profile Dropdown */}
             {showProfile && (
-              <div className="absolute top-full right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-[var(--color-border)] py-2 animate-fadeIn">
-                <Link
-                  to={`/profile/${user?.username}`}
-                  onClick={() => setShowProfile(false)}
-                  className="flex items-center gap-3 px-4 py-2 hover:bg-[var(--color-bg)] transition-colors"
-                >
-                  <User className="w-5 h-5 text-[var(--color-text-secondary)]" />
-                  <span>My Profile</span>
-                </Link>
-                <hr className="my-2 border-[var(--color-border)]" />
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-4 py-2 hover:bg-[var(--color-bg)] transition-colors text-[var(--color-error)]"
-                >
-                  <LogOut className="w-5 h-5" />
-                  <span>Logout</span>
-                </button>
+              <div className="absolute top-full right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-(--color-border) overflow-hidden animate-fadeIn z-50">
+                {/* User Card */}
+                <div className="p-4">
+                  <Link
+                    to={`/profile/${user?.username}`}
+                    onClick={() => setShowProfile(false)}
+                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-(--color-bg) transition-colors"
+                  >
+                    <img
+                      src={user?.avatar_url || `https://ui-avatars.com/api/?name=${user?.username}&background=4F46E5&color=fff`}
+                      alt={user?.username}
+                      className="w-12 h-12 rounded-full ring-2 ring-(--color-border)"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-(--color-text-primary) truncate">
+                        {user?.display_name || user?.username}
+                      </p>
+                      <p className="text-sm text-(--color-text-muted) truncate">@{user?.username}</p>
+                    </div>
+                  </Link>
+
+                  {/* See Profile Button */}
+                  <Link
+                    to={`/profile/${user?.username}`}
+                    onClick={() => setShowProfile(false)}
+                    className="block w-full mt-2 py-2 px-4 bg-(--color-bg) hover:bg-gray-200 rounded-lg text-center text-sm font-medium text-(--color-primary) transition-colors"
+                  >
+                    See your profile
+                  </Link>
+                </div>
+
+                <hr className="border-(--color-border)" />
+
+                {/* Menu Items */}
+                <div className="p-2">
+                  <Link
+                    to="/settings"
+                    onClick={() => setShowProfile(false)}
+                    className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-(--color-bg) transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-(--color-bg) flex items-center justify-center">
+                        <svg className="w-5 h-5 text-(--color-text-primary)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                      </div>
+                      <span className="font-medium text-(--color-text-primary)">Settings & privacy</span>
+                    </div>
+                    <svg className="w-5 h-5 text-(--color-text-muted)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Link>
+
+                  <Link
+                    to="/help"
+                    onClick={() => setShowProfile(false)}
+                    className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-(--color-bg) transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-(--color-bg) flex items-center justify-center">
+                        <svg className="w-5 h-5 text-(--color-text-primary)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <span className="font-medium text-(--color-text-primary)">Help & support</span>
+                    </div>
+                    <svg className="w-5 h-5 text-(--color-text-muted)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Link>
+
+                  <button
+                    onClick={() => { /* Toggle dark mode */ }}
+                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-(--color-bg) transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-(--color-bg) flex items-center justify-center">
+                        <svg className="w-5 h-5 text-(--color-text-primary)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                        </svg>
+                      </div>
+                      <span className="font-medium text-(--color-text-primary)">Display & accessibility</span>
+                    </div>
+                    <svg className="w-5 h-5 text-(--color-text-muted)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-(--color-bg) transition-colors"
+                  >
+                    <div className="w-9 h-9 rounded-full bg-(--color-bg) flex items-center justify-center">
+                      <LogOut className="w-5 h-5 text-(--color-text-primary)" />
+                    </div>
+                    <span className="font-medium text-(--color-text-primary)">Log out</span>
+                  </button>
+                </div>
+
+                {/* Footer */}
+                <div className="px-4 py-3 bg-(--color-bg)">
+                  <p className="text-xs text-(--color-text-muted) flex flex-wrap gap-1">
+                    <a href="/privacy" className="hover:underline">Privacy</a> ·
+                    <a href="/terms" className="hover:underline">Terms</a> ·
+                    <a href="/cookies" className="hover:underline">Cookies</a> ·
+                    <span>Nexa © 2024</span>
+                  </p>
+                </div>
               </div>
             )}
           </div>

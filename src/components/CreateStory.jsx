@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { X, Type, Loader2, ChevronLeft, Camera, Sparkles, Plus, Trash2 } from 'lucide-react'
+import { X, Type, Loader2, ChevronLeft, Camera, Sparkles, Plus, Trash2, Palette } from 'lucide-react'
 import Moveable from 'react-moveable'
-import html2canvas from 'html2canvas'
+import { toPng } from 'html-to-image'
 import { useStoryStore } from '../stores/storyStore'
 import { useAuthStore } from '../stores/authStore'
 import api from '../services/api'
@@ -11,14 +11,29 @@ import api from '../services/api'
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const BACKGROUND_GRADIENTS = [
-    { id: 1, gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
-    { id: 2, gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' },
-    { id: 3, gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' },
-    { id: 4, gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)' },
-    { id: 5, gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)' },
-    { id: 6, gradient: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)' },
-    { id: 7, gradient: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)' },
-    { id: 8, gradient: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)' },
+    { id: 1, gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', name: 'Purple' },
+    { id: 2, gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', name: 'Pink' },
+    { id: 3, gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', name: 'Blue' },
+    { id: 4, gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', name: 'Green' },
+    { id: 5, gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', name: 'Sunset' },
+    { id: 6, gradient: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)', name: 'Pastel' },
+    { id: 7, gradient: 'linear-gradient(135deg, #ff6b6b 0%, #feca57 100%)', name: 'Orange' },
+    { id: 8, gradient: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)', name: 'Dark' },
+    { id: 9, gradient: 'linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)', name: 'Night' },
+    { id: 10, gradient: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)', name: 'Mint' },
+]
+
+const TEXT_COLORS = [
+    '#FFFFFF', '#000000', '#FF6B6B', '#4ECDC4', '#FFE66D',
+    '#95E1D3', '#F38181', '#AA96DA', '#FCBAD3', '#A8D8EA'
+]
+
+const FONT_STYLES = [
+    { id: 'bold', name: 'Bold', style: { fontWeight: '800', fontFamily: 'system-ui, sans-serif' } },
+    { id: 'classic', name: 'Classic', style: { fontWeight: '600', fontFamily: 'Georgia, serif' } },
+    { id: 'modern', name: 'Modern', style: { fontWeight: '500', fontFamily: 'system-ui, sans-serif', letterSpacing: '2px' } },
+    { id: 'typewriter', name: 'Typewriter', style: { fontWeight: '400', fontFamily: 'Courier, monospace' } },
+    { id: 'neon', name: 'Neon', style: { fontWeight: '700', fontFamily: 'system-ui, sans-serif' } },
 ]
 
 export default function CreateStory({ isOpen, onClose }) {
@@ -33,6 +48,8 @@ export default function CreateStory({ isOpen, onClose }) {
     const [selectedBg, setSelectedBg] = useState(0)
     const [isPosting, setIsPosting] = useState(false)
     const [error, setError] = useState(null)
+    const [showColorPicker, setShowColorPicker] = useState(false)
+    const [showFontPicker, setShowFontPicker] = useState(false)
 
     // Text layers state
     const [textLayers, setTextLayers] = useState([])
@@ -41,7 +58,7 @@ export default function CreateStory({ isOpen, onClose }) {
     const [editText, setEditText] = useState('')
 
     const fileInputRef = useRef(null)
-    const containerRef = useRef(null) // capture target
+    const containerRef = useRef(null)
     const editInputRef = useRef(null)
     const moveableRef = useRef(null)
 
@@ -57,6 +74,8 @@ export default function CreateStory({ isOpen, onClose }) {
             setTextLayers([])
             setSelectedLayerId(null)
             setEditingLayerId(null)
+            setShowColorPicker(false)
+            setShowFontPicker(false)
         }
     }, [isOpen])
 
@@ -75,15 +94,19 @@ export default function CreateStory({ isOpen, onClose }) {
     const addTextLayer = useCallback(() => {
         const newLayer = {
             id: Date.now(),
-            text: 'Tap to edit',
+            text: '',
             translate: [0, 0],
             rotate: 0,
             scale: [1, 1],
-            color: '#ffffff',
-            fontSize: 24,
+            color: '#FFFFFF',
+            fontStyleId: 'bold',
+            fontSize: 28,
         }
         setTextLayers(prev => [...prev, newLayer])
         setSelectedLayerId(newLayer.id)
+        // Auto open edit modal for new text
+        setEditingLayerId(newLayer.id)
+        setEditText('')
     }, [])
 
     const updateTextLayer = useCallback((id, updates) => {
@@ -99,16 +122,23 @@ export default function CreateStory({ isOpen, onClose }) {
 
     const handleEditConfirm = useCallback(() => {
         if (editingLayerId) {
-            updateTextLayer(editingLayerId, { text: editText || 'Text' })
+            if (editText.trim()) {
+                updateTextLayer(editingLayerId, { text: editText })
+            } else {
+                // Delete empty text layers
+                deleteTextLayer(editingLayerId)
+            }
             setEditingLayerId(null)
             setEditText('')
-            // Reselect the layer after editing
-            setSelectedLayerId(editingLayerId)
         }
-    }, [editingLayerId, editText, updateTextLayer])
+    }, [editingLayerId, editText, updateTextLayer, deleteTextLayer])
 
-    const getTarget = () => {
-        return document.getElementById(`layer-${selectedLayerId}`)
+    const getTarget = () => document.getElementById(`layer-${selectedLayerId}`)
+
+    const getSelectedLayer = () => textLayers.find(l => l.id === selectedLayerId)
+
+    const getFontStyle = (fontStyleId) => {
+        return FONT_STYLES.find(f => f.id === fontStyleId)?.style || FONT_STYLES[0].style
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -131,14 +161,13 @@ export default function CreateStory({ isOpen, onClose }) {
         setMode('image')
         setStep('edit')
         setError(null)
-        // Add initial text
-        setTimeout(addTextLayer, 100)
     }
 
     const handleTextMode = () => {
         setMode('text')
         setStep('edit')
-        addTextLayer()
+        // Add initial text layer with edit modal open
+        setTimeout(addTextLayer, 100)
     }
 
     const handleBack = () => {
@@ -154,39 +183,41 @@ export default function CreateStory({ isOpen, onClose }) {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // POST LOGIC (CONVERT TO IMAGE -> UPLOAD)
+    // POST LOGIC
     // ─────────────────────────────────────────────────────────────────────────
 
     const handlePost = async () => {
         if (isPosting) return
 
-        // 1. Deselect everything to hide handles
+        // Check if there's content
+        const hasContent = mode === 'image' || textLayers.some(l => l.text.trim())
+        if (!hasContent) {
+            setError('Add some content to your story!')
+            return
+        }
+
         setSelectedLayerId(null)
         setIsPosting(true)
         setError(null)
 
         try {
-            // Wait for UI to update (hide handles)
-            await new Promise(resolve => setTimeout(resolve, 100))
+            await new Promise(resolve => setTimeout(resolve, 150))
 
             const element = containerRef.current
             if (!element) throw new Error("Capture area not found")
 
-            // 2. Capture the composed story as an image
-            const canvas = await html2canvas(element, {
-                useCORS: true, // Allow loading cross-origin images (like avatars)
-                scale: 2, // High res
-                backgroundColor: null, // Transparent if needed
-                logging: false
+            const dataUrl = await toPng(element, {
+                cacheBust: true,
+                pixelRatio: 2,
+                backgroundColor: '#000000',
+                skipFonts: true,
+                filter: (node) => !node.classList?.contains('moveable-control-box')
             })
 
-            // 3. Convert canvas to Blob
-            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9))
+            const fetchResult = await fetch(dataUrl)
+            const blob = await fetchResult.blob()
+            const file = new File([blob], `story-${Date.now()}.png`, { type: 'image/png' })
 
-            // 4. Create File object
-            const file = new File([blob], `story-${Date.now()}.jpg`, { type: 'image/jpeg' })
-
-            // 5. Upload Image
             const formData = new FormData()
             formData.append('file', file)
 
@@ -194,9 +225,8 @@ export default function CreateStory({ isOpen, onClose }) {
                 headers: { 'Content-Type': 'multipart/form-data' }
             })
 
-            // 6. Create Story (always image type now, since we flattened it)
             const storyData = {
-                content: null, // Content burnt into image
+                content: null,
                 image_url: uploadResponse.data.image_url
             }
 
@@ -214,6 +244,8 @@ export default function CreateStory({ isOpen, onClose }) {
     }
 
     if (!isOpen) return null
+
+    const selectedLayer = getSelectedLayer()
 
     return (
         <div className="fixed inset-0 bg-black z-50 flex flex-col">
@@ -238,7 +270,7 @@ export default function CreateStory({ isOpen, onClose }) {
                     <button
                         onClick={handlePost}
                         disabled={isPosting}
-                        className="px-4 py-2 bg-white text-black font-semibold rounded-full text-sm hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                        className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-full text-sm hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
                     >
                         {isPosting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Share'}
                     </button>
@@ -248,7 +280,7 @@ export default function CreateStory({ isOpen, onClose }) {
             </div>
 
             {/* Content */}
-            <div className="flex-1 flex items-center justify-center overflow-hidden bg-[#1a1a1a]">
+            <div className="flex-1 flex items-center justify-center overflow-hidden bg-[#0a0a0a]">
                 {/* Select Mode */}
                 {step === 'select' && (
                     <div className="w-full max-w-md px-6 space-y-4">
@@ -290,19 +322,20 @@ export default function CreateStory({ isOpen, onClose }) {
                         {/* Story Capture Container */}
                         <div
                             ref={containerRef}
-                            onClick={() => setSelectedLayerId(null)}
-                            className="relative rounded-xl overflow-hidden shadow-2xl w-full max-w-[360px] mx-auto bg-black"
+                            onClick={() => { setSelectedLayerId(null); setShowColorPicker(false); setShowFontPicker(false); }}
+                            className="relative rounded-xl overflow-hidden shadow-2xl w-full max-w-[360px] mx-auto"
                             style={{
                                 aspectRatio: '9/16',
-                                maxHeight: 'calc(100vh - 160px)',
+                                maxHeight: 'calc(100vh - 180px)',
                             }}
                         >
-                            {/* Background: Image or Gradient */}
+                            {/* Background */}
                             {mode === 'image' && imageUrl ? (
                                 <img
                                     src={imageUrl}
                                     alt="Story preview"
                                     className="w-full h-full object-cover pointer-events-none select-none"
+                                    crossOrigin="anonymous"
                                 />
                             ) : (
                                 <div
@@ -311,102 +344,177 @@ export default function CreateStory({ isOpen, onClose }) {
                                 />
                             )}
 
-                            {/* Text Layers */}
-                            {textLayers.map(layer => (
-                                <div
-                                    key={layer.id}
-                                    id={`layer-${layer.id}`}
-                                    className="absolute top-1/2 left-1/2 px-4 py-2 bg-black/30 backdrop-blur-sm rounded-lg"
-                                    style={{
-                                        transform: `translate(${layer.translate[0]}px, ${layer.translate[1]}px) rotate(${layer.rotate}deg) scale(${layer.scale[0]}, ${layer.scale[1]})`,
-                                        width: 'max-content',
-                                        maxWidth: '280px',
-                                        cursor: 'pointer',
-                                        zIndex: 10 // ensure text is above bg
-                                    }}
-                                    onClick={(e) => {
-                                        e.stopPropagation()
-                                        setSelectedLayerId(layer.id)
-                                    }}
-                                    onDoubleClick={(e) => {
-                                        e.stopPropagation()
-                                        setEditingLayerId(layer.id)
-                                        setEditText(layer.text)
-                                    }}
-                                    onTouchEnd={(e) => {
-                                        // Simple double tap detection logic could go here
-                                        // For now relying on button or double click
-                                        e.stopPropagation();
-                                        setSelectedLayerId(layer.id);
-                                    }}
-                                >
-                                    <p className="text-white font-bold text-center whitespace-pre-wrap select-none" style={{ fontSize: `${layer.fontSize}px`, textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
-                                        {layer.text}
-                                    </p>
-                                </div>
-                            ))}
+                            {/* Text Layers - Instagram Style (no background box) */}
+                            {textLayers.map(layer => {
+                                if (!layer.text.trim()) return null
+                                const fontStyle = getFontStyle(layer.fontStyleId)
+                                const isNeon = layer.fontStyleId === 'neon'
+
+                                return (
+                                    <div
+                                        key={layer.id}
+                                        id={`layer-${layer.id}`}
+                                        className="absolute top-1/2 left-1/2"
+                                        style={{
+                                            transform: `translate(${layer.translate[0]}px, ${layer.translate[1]}px) rotate(${layer.rotate}deg) scale(${layer.scale[0]}, ${layer.scale[1]})`,
+                                            width: 'max-content',
+                                            maxWidth: '90%',
+                                            cursor: 'pointer',
+                                            zIndex: selectedLayerId === layer.id ? 20 : 10,
+                                        }}
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            setSelectedLayerId(layer.id)
+                                        }}
+                                        onDoubleClick={(e) => {
+                                            e.stopPropagation()
+                                            setEditingLayerId(layer.id)
+                                            setEditText(layer.text)
+                                        }}
+                                    >
+                                        <p
+                                            className="text-center whitespace-pre-wrap select-none px-2"
+                                            style={{
+                                                color: layer.color,
+                                                fontSize: `${layer.fontSize}px`,
+                                                ...fontStyle,
+                                                textShadow: isNeon
+                                                    ? `0 0 10px ${layer.color}, 0 0 20px ${layer.color}, 0 0 30px ${layer.color}`
+                                                    : '2px 2px 4px rgba(0,0,0,0.8), 0 0 20px rgba(0,0,0,0.5)',
+                                                WebkitTextStroke: layer.color === '#000000' ? '1px rgba(255,255,255,0.3)' : 'none',
+                                            }}
+                                        >
+                                            {layer.text}
+                                        </p>
+                                    </div>
+                                )
+                            })}
 
                             {/* Moveable Controller */}
-                            {selectedLayerId && (
+                            {selectedLayerId && getTarget() && (
                                 <Moveable
                                     target={getTarget()}
                                     container={containerRef.current}
                                     ref={moveableRef}
                                     draggable={true}
                                     throttleDrag={0}
-                                    resizable={true}
-                                    throttleResize={0}
+                                    resizable={false}
+                                    scalable={true}
+                                    throttleScale={0}
                                     rotatable={true}
                                     throttleRotate={0}
                                     origin={false}
-                                    padding={{ left: 10, top: 10, right: 10, bottom: 10 }}
 
-                                    // Drag
-                                    onDragStart={e => e.set(textLayers.find(l => l.id === selectedLayerId).translate)}
+                                    onDragStart={e => {
+                                        const layer = textLayers.find(l => l.id === selectedLayerId)
+                                        if (layer) e.set(layer.translate)
+                                    }}
                                     onDrag={e => {
                                         e.target.style.transform = e.transform
                                         updateTextLayer(selectedLayerId, { translate: e.beforeTranslate })
                                     }}
 
-                                    // Resize
-                                    onResizeStart={e => {
-                                        e.setOrigin(["%", "%"])
-                                        e.dragStart && e.dragStart.set(textLayers.find(l => l.id === selectedLayerId).translate)
+                                    onScaleStart={e => {
+                                        const layer = textLayers.find(l => l.id === selectedLayerId)
+                                        if (layer) e.set(layer.scale)
                                     }}
-                                    onResize={e => {
-                                        e.target.style.width = `${e.width}px`
-                                        e.target.style.height = `${e.height}px`
+                                    onScale={e => {
                                         e.target.style.transform = e.drag.transform
-                                        updateTextLayer(selectedLayerId, { translate: e.drag.beforeTranslate })
+                                        updateTextLayer(selectedLayerId, {
+                                            scale: e.scale,
+                                            translate: e.drag.beforeTranslate
+                                        })
                                     }}
 
-                                    // Rotate
-                                    onRotateStart={e => e.set(textLayers.find(l => l.id === selectedLayerId).rotate)}
+                                    onRotateStart={e => {
+                                        const layer = textLayers.find(l => l.id === selectedLayerId)
+                                        if (layer) e.set(layer.rotate)
+                                    }}
                                     onRotate={e => {
                                         e.target.style.transform = e.drag.transform
-                                        updateTextLayer(selectedLayerId, { rotate: e.beforeRotate })
+                                        updateTextLayer(selectedLayerId, {
+                                            rotate: e.beforeRotate,
+                                            translate: e.drag.beforeTranslate
+                                        })
                                     }}
                                 />
-                            )}
-
-                            {/* Delete Button for Selected Layer */}
-                            {selectedLayerId && (
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation()
-                                        deleteTextLayer(selectedLayerId)
-                                    }}
-                                    className="absolute top-4 left-1/2 -translate-x-1/2 bg-red-500 p-2 rounded-full shadow-lg z-50 animate-in fade-in zoom-in duration-200"
-                                >
-                                    <Trash2 className="w-5 h-5 text-white" />
-                                </button>
                             )}
                         </div>
 
                         {/* Floating Controls */}
                         <div className="absolute bottom-4 left-0 right-0 flex flex-col items-center gap-3 px-4 pointer-events-none">
+                            {/* Text Editing Controls */}
+                            {selectedLayerId && selectedLayer && (
+                                <div className="pointer-events-auto flex items-center gap-2 bg-black/60 backdrop-blur-md rounded-full px-3 py-2">
+                                    {/* Color Picker Toggle */}
+                                    <button
+                                        onClick={() => { setShowColorPicker(!showColorPicker); setShowFontPicker(false); }}
+                                        className="w-8 h-8 rounded-full border-2 border-white/50 hover:border-white transition-colors"
+                                        style={{ backgroundColor: selectedLayer.color }}
+                                    />
+
+                                    {/* Font Style Toggle */}
+                                    <button
+                                        onClick={() => { setShowFontPicker(!showFontPicker); setShowColorPicker(false); }}
+                                        className="px-3 py-1 text-white text-sm font-medium bg-white/20 rounded-full hover:bg-white/30 transition-colors"
+                                    >
+                                        Aa
+                                    </button>
+
+                                    {/* Edit Text */}
+                                    <button
+                                        onClick={() => { setEditingLayerId(selectedLayerId); setEditText(selectedLayer.text); }}
+                                        className="px-3 py-1 text-white text-sm bg-white/20 rounded-full hover:bg-white/30 transition-colors"
+                                    >
+                                        Edit
+                                    </button>
+
+                                    {/* Delete */}
+                                    <button
+                                        onClick={() => deleteTextLayer(selectedLayerId)}
+                                        className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-full transition-colors"
+                                    >
+                                        <Trash2 className="w-5 h-5" />
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Color Picker */}
+                            {showColorPicker && selectedLayerId && (
+                                <div className="pointer-events-auto flex gap-2 bg-black/60 backdrop-blur-md rounded-full px-3 py-2">
+                                    {TEXT_COLORS.map(color => (
+                                        <button
+                                            key={color}
+                                            onClick={() => updateTextLayer(selectedLayerId, { color })}
+                                            className={`w-7 h-7 rounded-full border-2 transition-transform ${selectedLayer?.color === color ? 'border-white scale-110' : 'border-transparent hover:scale-105'
+                                                }`}
+                                            style={{ backgroundColor: color }}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Font Picker */}
+                            {showFontPicker && selectedLayerId && (
+                                <div className="pointer-events-auto flex gap-2 bg-black/60 backdrop-blur-md rounded-full px-3 py-2 overflow-x-auto">
+                                    {FONT_STYLES.map(font => (
+                                        <button
+                                            key={font.id}
+                                            onClick={() => updateTextLayer(selectedLayerId, { fontStyleId: font.id })}
+                                            className={`px-3 py-1 text-white text-sm rounded-full whitespace-nowrap transition-all ${selectedLayer?.fontStyleId === font.id
+                                                    ? 'bg-white/40'
+                                                    : 'bg-white/10 hover:bg-white/20'
+                                                }`}
+                                            style={font.style}
+                                        >
+                                            {font.name}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Main Action Buttons */}
                             <div className="pointer-events-auto flex gap-3">
-                                {/* Add Text Button */}
                                 <button
                                     onClick={addTextLayer}
                                     className="px-4 py-2 bg-white/20 backdrop-blur-sm text-white rounded-full text-sm hover:bg-white/30 transition-colors flex items-center gap-2"
@@ -415,7 +523,6 @@ export default function CreateStory({ isOpen, onClose }) {
                                     Add Text
                                 </button>
 
-                                {/* Change Image Button */}
                                 {mode === 'image' && (
                                     <button
                                         onClick={() => fileInputRef.current?.click()}
@@ -437,6 +544,7 @@ export default function CreateStory({ isOpen, onClose }) {
                                             className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex-shrink-0 transition-transform ${selectedBg === index ? 'scale-110 ring-2 ring-white ring-offset-2 ring-offset-black' : 'hover:scale-105'
                                                 }`}
                                             style={{ background: bg.gradient }}
+                                            title={bg.name}
                                         />
                                     ))}
                                 </div>
@@ -448,27 +556,28 @@ export default function CreateStory({ isOpen, onClose }) {
 
             {/* Text Edit Modal */}
             {editingLayerId && (
-                <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl p-4 w-full max-w-sm" onClick={e => e.stopPropagation()}>
-                        <h3 className="text-lg font-bold mb-2">Edit Text</h3>
-                        <input
+                <div className="fixed inset-0 bg-black/90 z-60 flex items-center justify-center p-4">
+                    <div className="bg-zinc-900 rounded-2xl p-5 w-full max-w-sm border border-zinc-700" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-lg font-bold text-white mb-3">Add Text</h3>
+                        <textarea
                             ref={editInputRef}
-                            type="text"
                             value={editText}
                             onChange={(e) => setEditText(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleEditConfirm()}
-                            className="w-full px-4 py-3 border rounded-lg text-lg focus:ring-2 focus:ring-blue-500 outline-none mb-3"
+                            placeholder="Type something..."
+                            rows={3}
+                            className="w-full px-4 py-3 bg-zinc-800 border border-zinc-600 rounded-xl text-white text-lg focus:ring-2 focus:ring-purple-500 outline-none resize-none placeholder:text-zinc-500"
                         />
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 mt-4">
                             <button
-                                onClick={() => { setEditingLayerId(null); setEditText('') }}
-                                className="flex-1 py-2 border rounded-lg font-medium hover:bg-gray-50"
+                                onClick={() => { setEditingLayerId(null); setEditText(''); deleteTextLayer(editingLayerId); }}
+                                className="flex-1 py-2.5 border border-zinc-600 text-white rounded-xl font-medium hover:bg-zinc-800 transition-colors"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handleEditConfirm}
-                                className="flex-1 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+                                disabled={!editText.trim()}
+                                className="flex-1 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-medium hover:opacity-90 disabled:opacity-50 transition-all"
                             >
                                 Done
                             </button>
@@ -479,8 +588,9 @@ export default function CreateStory({ isOpen, onClose }) {
 
             {/* Error Toast */}
             {error && (
-                <div className="absolute bottom-20 left-4 right-4 bg-red-500 text-white px-4 py-3 rounded-xl text-center text-sm z-[70]">
+                <div className="absolute bottom-24 left-4 right-4 bg-red-500/90 backdrop-blur-sm text-white px-4 py-3 rounded-xl text-center text-sm z-70 animate-in fade-in slide-in-from-bottom-2">
                     {error}
+                    <button onClick={() => setError(null)} className="ml-2 underline">Dismiss</button>
                 </div>
             )}
 

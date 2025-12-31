@@ -105,7 +105,7 @@ export default function CreatePost() {
   return (
     <>
       {/* Quick Post Input */}
-      <div className="bg-white rounded-lg shadow-sm border border-[var(--color-border)] p-3">
+      <div className="bg-white rounded-lg shadow-sm border border-(--color-border) p-3">
         <div className="flex items-center gap-3">
           <img
             src={user?.avatar_url || `https://ui-avatars.com/api/?name=${user?.username}&background=4F46E5&color=fff`}
@@ -115,9 +115,9 @@ export default function CreatePost() {
 
           <button
             onClick={() => setIsExpanded(true)}
-            className="flex-1 text-left px-4 py-2.5 bg-[var(--color-bg)] hover:bg-gray-200 rounded-full text-[var(--color-text-muted)] transition-colors"
+            className="flex-1 text-left px-4 py-2.5 bg-(--color-bg) hover:bg-gray-200 rounded-full text-(--color-text-muted) transition-colors text-sm"
           >
-            What's on your mind, {user?.display_name || user?.username}?
+            What's going on?
           </button>
 
           {/* Quick action icons */}
@@ -131,20 +131,20 @@ export default function CreatePost() {
             />
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="p-2 hover:bg-[var(--color-bg)] rounded-full transition-colors"
+              className="p-2 hover:bg-(--color-bg) rounded-full transition-colors"
               title="Photo"
             >
               <Image className="w-6 h-6 text-green-500" />
             </button>
             <button
-              className="p-2 hover:bg-[var(--color-bg)] rounded-full transition-colors"
+              className="p-2 hover:bg-(--color-bg) rounded-full transition-colors"
               title="Video"
             >
               <Video className="w-6 h-6 text-red-500" />
             </button>
             <button
               onClick={() => setIsExpanded(true)}
-              className="p-2 hover:bg-[var(--color-bg)] rounded-full transition-colors"
+              className="p-2 hover:bg-(--color-bg) rounded-full transition-colors"
               title="Feeling"
             >
               <Smile className="w-6 h-6 text-yellow-500" />
@@ -158,13 +158,13 @@ export default function CreatePost() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-fadeIn">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 animate-slideUp">
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)]">
+            <div className="flex items-center justify-between p-4 border-b border-(--color-border)">
               <h2 className="text-xl font-bold text-center flex-1">Create post</h2>
               <button
                 onClick={closeModal}
-                className="p-2 hover:bg-[var(--color-bg)] rounded-full transition-colors"
+                className="p-2 hover:bg-(--color-bg) rounded-full transition-colors"
               >
-                <X className="w-6 h-6 text-[var(--color-text-muted)]" />
+                <X className="w-6 h-6 text-(--color-text-muted)" />
               </button>
             </div>
 
@@ -178,10 +178,10 @@ export default function CreatePost() {
                   className="w-10 h-10 rounded-full"
                 />
                 <div>
-                  <p className="font-semibold text-[var(--color-text-primary)]">
+                  <p className="font-semibold text-(--color-text-primary)">
                     {user?.display_name || user?.username}
                   </p>
-                  <span className="text-xs bg-[var(--color-bg)] px-2 py-0.5 rounded text-[var(--color-text-muted)]">
+                  <span className="text-xs bg-(--color-bg) px-2 py-0.5 rounded text-(--color-text-muted)">
                     🌐 Public
                   </span>
                 </div>
@@ -191,15 +191,16 @@ export default function CreatePost() {
               <textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                placeholder={`What's on your mind, ${user?.display_name || user?.username}?`}
+                // placeholder={`What's on your mind, ${user?.display_name || user?.username}?`}
+                placeholder="What's on your mind."
                 rows={4}
                 autoFocus
-                className="w-full resize-none border-none focus:ring-0 bg-transparent text-lg text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]"
+                className="w-full resize-none border-none focus:ring-0 bg-transparent text-lg text-(--color-text-primary) placeholder:text-(--color-text-muted)"
               />
 
               {/* Image preview */}
               {imagePreview && (
-                <div className="relative mt-3 rounded-lg overflow-hidden border border-[var(--color-border)]">
+                <div className="relative mt-3 rounded-lg overflow-hidden border border-(--color-border)">
                   <img
                     src={imagePreview}
                     alt="Preview"
@@ -216,23 +217,23 @@ export default function CreatePost() {
 
               {/* Error */}
               {error && (
-                <p className="text-[var(--color-error)] text-sm mt-3">{error}</p>
+                <p className="text-(--color-error) text-sm mt-3">{error}</p>
               )}
 
               {/* Add to post */}
-              <div className="flex items-center justify-between mt-4 p-3 border border-[var(--color-border)] rounded-lg">
-                <span className="text-sm font-medium text-[var(--color-text-primary)]">Add to your post</span>
+              <div className="flex items-center justify-between mt-4 p-3 border border-(--color-border) rounded-lg">
+                <span className="text-sm font-medium text-(--color-text-primary)">Add to your post</span>
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    className="p-2 hover:bg-[var(--color-bg)] rounded-full transition-colors"
+                    className="p-2 hover:bg-(--color-bg) rounded-full transition-colors"
                   >
                     <Image className="w-6 h-6 text-green-500" />
                   </button>
-                  <button className="p-2 hover:bg-[var(--color-bg)] rounded-full transition-colors">
+                  <button className="p-2 hover:bg-(--color-bg) rounded-full transition-colors">
                     <Video className="w-6 h-6 text-red-500" />
                   </button>
-                  <button className="p-2 hover:bg-[var(--color-bg)] rounded-full transition-colors">
+                  <button className="p-2 hover:bg-(--color-bg) rounded-full transition-colors">
                     <Smile className="w-6 h-6 text-yellow-500" />
                   </button>
                 </div>
@@ -240,11 +241,11 @@ export default function CreatePost() {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 border-t border-[var(--color-border)]">
+            <div className="p-4 border-t border-(--color-border)">
               <button
                 onClick={handleSubmit}
                 disabled={isLoading || (!content.trim() && !image)}
-                className="w-full py-2.5 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-dark)]"
+                className="w-full py-2.5 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-(--color-primary) text-white hover:bg-(--color-primary-dark)"
               >
                 {isLoading ? (
                   <Loader2 className="w-5 h-5 animate-spin mx-auto" />

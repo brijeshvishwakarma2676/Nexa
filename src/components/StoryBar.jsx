@@ -35,14 +35,14 @@ export default function StoryBar() {
   }
 
   return (
-    <div className="relative bg-white rounded-lg shadow-sm border border-[var(--color-border)] p-3">
+    <div className="relative bg-white rounded-lg shadow-sm border border-(--color-border) p-3">
       {/* Left Arrow */}
       {showLeftArrow && (
         <button
           onClick={() => scroll('left')}
-          className="absolute left-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 rounded-full bg-white shadow-lg border border-[var(--color-border)] flex items-center justify-center hover:bg-gray-50 transition-colors"
+          className="absolute left-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 rounded-full bg-white shadow-lg border border-(--color-border) flex items-center justify-center hover:bg-gray-50 transition-colors"
         >
-          <ChevronLeft className="w-6 h-6 text-[var(--color-text-primary)]" />
+          <ChevronLeft className="w-6 h-6 text-(--color-text-primary)" />
         </button>
       )}
 
@@ -50,9 +50,9 @@ export default function StoryBar() {
       {showRightArrow && storyGroups.length > 3 && (
         <button
           onClick={() => scroll('right')}
-          className="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 rounded-full bg-white shadow-lg border border-[var(--color-border)] flex items-center justify-center hover:bg-gray-50 transition-colors"
+          className="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 rounded-full bg-white shadow-lg border border-(--color-border) flex items-center justify-center hover:bg-gray-50 transition-colors"
         >
-          <ChevronRight className="w-6 h-6 text-[var(--color-text-primary)]" />
+          <ChevronRight className="w-6 h-6 text-(--color-text-primary)" />
         </button>
       )}
 
@@ -64,10 +64,10 @@ export default function StoryBar() {
         {/* Create Story Card */}
         <div
           onClick={() => setShowCreateModal(true)}
-          className="flex-shrink-0 w-28 h-48 relative rounded-xl overflow-hidden cursor-pointer group shadow-sm border border-[var(--color-border)]"
+          className="flex-shrink-0 w-28 h-48 relative rounded-xl overflow-hidden cursor-pointer group shadow-sm border border-(--color-border)"
         >
           {/* User's photo as background */}
-          <div className="h-3/4 bg-gradient-to-b from-blue-500 to-indigo-600">
+          <div className="h-3/4 bg-linear-to-b from-blue-500 to-indigo-600">
             <img
               src={user?.avatar_url || `https://ui-avatars.com/api/?name=${user?.username}&background=4F46E5&color=fff`}
               alt="Create story"
@@ -135,12 +135,12 @@ function StoryCard({ group, index, onClick, isOwn = false }) {
           className="w-full h-full object-cover group-hover:scale-105 transition-transform"
         />
         {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent" />
       </div>
 
       {/* User avatar with ring */}
       <div className="absolute top-3 left-3">
-        <div className={`p-0.5 rounded-full ${hasUnseen ? 'bg-gradient-to-tr from-[var(--color-primary)] to-[var(--color-secondary)]' : 'bg-gray-300'}`}>
+        <div className={`p-0.5 rounded-full ${hasUnseen ? 'bg-linear-to-tr from-(--color-primary) to-(--color-secondary)' : 'bg-gray-300'}`}>
           <img
             src={group.user.avatar_url || `https://ui-avatars.com/api/?name=${group.user.username}&background=4F46E5&color=fff`}
             alt={group.user.username}

@@ -145,7 +145,7 @@ export default function Profile() {
   if (isLoading) {
     return (
       <div className="flex justify-center py-20">
-        <Loader2 className="w-10 h-10 text-[var(--color-primary)] animate-spin" />
+        <Loader2 className="w-10 h-10 text-(--color-primary) animate-spin" />
       </div>
     )
   }
@@ -153,7 +153,7 @@ export default function Profile() {
   if (!profile) {
     return (
       <div className="card p-12 text-center">
-        <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">
+        <h2 className="text-xl font-semibold text-(--color-text-primary)">
           User not found
         </h2>
       </div>
@@ -165,7 +165,7 @@ export default function Profile() {
       {/* Profile Header */}
       <div className="card overflow-hidden">
         {/* Cover Image */}
-        <div className="relative h-48 bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-secondary)]">
+        <div className="relative h-48 bg-linear-to-r from-(--color-primary) to-(--color-secondary)">
           {profile.cover_url && (
             <img
               src={profile.cover_url}
@@ -198,7 +198,7 @@ export default function Profile() {
             />
 
             {isOwner && (
-              <label className="absolute bottom-2 right-2 p-2 rounded-full bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)] cursor-pointer transition-colors">
+              <label className="absolute bottom-2 right-2 p-2 rounded-full bg-(--color-primary) text-white hover:bg-(--color-primary-hover) cursor-pointer transition-colors">
                 <Camera className="w-4 h-4" />
                 <input
                   type="file"
@@ -222,11 +222,11 @@ export default function Profile() {
                   className="input mb-2"
                 />
               ) : (
-                <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">
+                <h1 className="text-2xl font-bold text-(--color-text-primary)">
                   {profile.display_name || profile.username}
                 </h1>
               )}
-              <p className="text-[var(--color-text-muted)]">@{profile.username}</p>
+              <p className="text-(--color-text-muted)">@{profile.username}</p>
             </div>
 
             <div className="flex gap-2">
@@ -298,30 +298,30 @@ export default function Profile() {
               className="input mt-4"
             />
           ) : profile.bio ? (
-            <p className="mt-4 text-[var(--color-text-secondary)]">
+            <p className="mt-4 text-(--color-text-secondary)">
               {profile.bio}
             </p>
           ) : null}
 
           {/* Stats */}
-          <div className="flex gap-6 mt-6 pt-4 border-t border-[var(--color-border)]">
+          <div className="flex gap-6 mt-6 pt-4 border-t border-(--color-border)">
             <div className="text-center">
-              <p className="text-xl font-bold text-[var(--color-text-primary)]">
+              <p className="text-xl font-bold text-(--color-text-primary)">
                 {profile.posts_count}
               </p>
-              <p className="text-sm text-[var(--color-text-muted)]">Posts</p>
+              <p className="text-sm text-(--color-text-muted)">Posts</p>
             </div>
             <div className="text-center">
-              <p className="text-xl font-bold text-[var(--color-text-primary)]">
+              <p className="text-xl font-bold text-(--color-text-primary)">
                 {profile.followers_count}
               </p>
-              <p className="text-sm text-[var(--color-text-muted)]">Followers</p>
+              <p className="text-sm text-(--color-text-muted)">Followers</p>
             </div>
             <div className="text-center">
-              <p className="text-xl font-bold text-[var(--color-text-primary)]">
+              <p className="text-xl font-bold text-(--color-text-primary)">
                 {profile.following_count}
               </p>
-              <p className="text-sm text-[var(--color-text-muted)]">Following</p>
+              <p className="text-sm text-(--color-text-muted)">Following</p>
             </div>
           </div>
         </div>
@@ -329,12 +329,12 @@ export default function Profile() {
 
       {/* Tabs */}
       <div className="card">
-        <div className="flex border-b border-[var(--color-border)]">
+        <div className="flex border-b border-(--color-border)">
           <button
             onClick={() => setActiveTab('posts')}
             className={`flex-1 flex items-center justify-center gap-2 py-4 font-medium transition-colors ${activeTab === 'posts'
-              ? 'text-[var(--color-primary)] border-b-2 border-[var(--color-primary)]'
-              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
+              ? 'text-(--color-primary) border-b-2 border-(--color-primary)'
+              : 'text-(--color-text-muted) hover:text-(--color-text-primary)'
               }`}
           >
             <Grid className="w-5 h-5" />
@@ -347,7 +347,7 @@ export default function Profile() {
       <div className="space-y-4">
         {posts.length === 0 ? (
           <div className="card p-12 text-center">
-            <p className="text-[var(--color-text-muted)]">
+            <p className="text-(--color-text-muted)">
               {isOwner ? "You haven't posted anything yet." : "No posts yet."}
             </p>
           </div>

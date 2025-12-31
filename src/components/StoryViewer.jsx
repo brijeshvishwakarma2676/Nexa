@@ -175,7 +175,7 @@ export default function StoryViewer() {
               className="w-full h-full object-cover"
             />
           ) : (
-            <div className="w-full h-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-secondary)] flex items-center justify-center p-8">
+            <div className="w-full h-full bg-linear-to-br from-(--color-primary) to-(--color-secondary) flex items-center justify-center p-8">
               <p className="text-white text-2xl font-bold text-center leading-relaxed drop-shadow-lg">
                 {currentStory.content}
               </p>

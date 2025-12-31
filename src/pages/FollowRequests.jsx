@@ -62,7 +62,7 @@ export default function FollowRequests() {
   if (requestsLoading) {
     return (
       <div className="flex justify-center py-12">
-        <Loader2 className="w-8 h-8 text-[var(--color-primary)] animate-spin" />
+        <Loader2 className="w-8 h-8 text-(--color-primary) animate-spin" />
       </div>
     )
   }
@@ -71,12 +71,12 @@ export default function FollowRequests() {
     <div className="max-w-2xl mx-auto">
       <div className="card">
         {/* Tabs */}
-        <div className="flex border-b border-[var(--color-border)]">
+        <div className="flex border-b border-(--color-border)">
           <button
             onClick={() => setActiveTab('incoming')}
             className={`flex-1 px-4 py-3 font-medium text-center transition-colors ${activeTab === 'incoming'
-                ? 'text-[var(--color-primary)] border-b-2 border-[var(--color-primary)]'
-                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
+                ? 'text-(--color-primary) border-b-2 border-(--color-primary)'
+                : 'text-(--color-text-muted) hover:text-(--color-text-primary)'
               }`}
           >
             <UserPlus className="w-4 h-4 inline mr-2" />
@@ -85,8 +85,8 @@ export default function FollowRequests() {
           <button
             onClick={() => setActiveTab('sent')}
             className={`flex-1 px-4 py-3 font-medium text-center transition-colors ${activeTab === 'sent'
-                ? 'text-[var(--color-primary)] border-b-2 border-[var(--color-primary)]'
-                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
+                ? 'text-(--color-primary) border-b-2 border-(--color-primary)'
+                : 'text-(--color-text-muted) hover:text-(--color-text-primary)'
               }`}
           >
             <Send className="w-4 h-4 inline mr-2" />
@@ -98,8 +98,8 @@ export default function FollowRequests() {
         {activeTab === 'incoming' && (
           incomingRequests.length === 0 ? (
             <div className="p-12 text-center">
-              <UserPlus className="w-12 h-12 mx-auto text-[var(--color-text-muted)] mb-4" />
-              <p className="text-[var(--color-text-muted)]">
+              <UserPlus className="w-12 h-12 mx-auto text-(--color-text-muted) mb-4" />
+              <p className="text-(--color-text-muted)">
                 No pending friend requests
               </p>
             </div>
@@ -114,10 +114,10 @@ export default function FollowRequests() {
                     className="w-12 h-12 rounded-full avatar"
                   />
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-[var(--color-text-primary)] truncate">
+                    <p className="font-semibold text-(--color-text-primary) truncate">
                       {request.requester.display_name || request.requester.username}
                     </p>
-                    <p className="text-sm text-[var(--color-text-muted)] truncate">
+                    <p className="text-sm text-(--color-text-muted) truncate">
                       @{request.requester.username}
                     </p>
                   </div>
@@ -161,8 +161,8 @@ export default function FollowRequests() {
         {activeTab === 'sent' && (
           sentRequests.length === 0 ? (
             <div className="p-12 text-center">
-              <Send className="w-12 h-12 mx-auto text-[var(--color-text-muted)] mb-4" />
-              <p className="text-[var(--color-text-muted)]">
+              <Send className="w-12 h-12 mx-auto text-(--color-text-muted) mb-4" />
+              <p className="text-(--color-text-muted)">
                 No sent requests
               </p>
             </div>
@@ -177,10 +177,10 @@ export default function FollowRequests() {
                     className="w-12 h-12 rounded-full avatar"
                   />
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-[var(--color-text-primary)] truncate">
+                    <p className="font-semibold text-(--color-text-primary) truncate">
                       {request.target.display_name || request.target.username}
                     </p>
-                    <p className="text-sm text-[var(--color-text-muted)] truncate">
+                    <p className="text-sm text-(--color-text-muted) truncate">
                       @{request.target.username}
                     </p>
                   </div>
