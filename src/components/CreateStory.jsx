@@ -423,6 +423,9 @@ export default function CreateStory({ isOpen, onClose }) {
                             rotatable={true}
                             origin={false}
                             keepRatio={selectedLayer?.type === 'image'}
+                            bounds={{ left: 0, top: 0, right: 0, bottom: 0, position: "css" }}
+                            snappable={true}
+                            snapContainer={containerRef.current}
 
                             onDragStart={e => {
                                 const layer = layers.find(l => l.id === selectedLayerId)
@@ -470,7 +473,7 @@ export default function CreateStory({ isOpen, onClose }) {
                 </div>
 
                 {/* Floating Controls */}
-                <div className="absolute bottom-4 left-0 right-0 flex flex-col items-center gap-3 px-4 pointer-events-none">
+                <div className="absolute bottom-4 left-0 right-0 flex flex-col items-center gap-3 px-4 pointer-events-none z-50">
                     {/* Layer Controls */}
                     {selectedLayerId && selectedLayer && (
                         <div className="pointer-events-auto flex items-center gap-2 bg-black/60 backdrop-blur-md rounded-full px-3 py-2">
