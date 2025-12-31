@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Camera, Edit2, UserPlus, UserMinus, Loader2, Grid, MessageSquare } from 'lucide-react'
+import { Camera, Edit2, UserPlus, UserMinus, Loader2, Grid, MessageSquare, Clock, Check } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
 import { useChatStore } from '../stores/chatStore'
 import api from '../services/api'
@@ -64,25 +64,32 @@ export default function Profile() {
     }
   }
 
-  // Follow/Unfollow
+  // Follow/Unfollow - handles all relationship states
   const handleFollowToggle = async () => {
     if (!profile) return
 
     setIsFollowLoading(true)
     try {
-      if (profile.is_following) {
+      const status = profile.relationship_status || (profile.is_following ? 'following' : 'none')
+
+      if (status === 'following' || status === 'pending_sent') {
+        // Unfollow or cancel request
         await api.delete(`/users/${profile.id}/follow`)
         setProfile(prev => ({
           ...prev,
           is_following: false,
-          followers_count: prev.followers_count - 1
+          relationship_status: 'none',
+          followers_count: status === 'following' ? prev.followers_count - 1 : prev.followers_count
         }))
-      } else {
-        await api.post(`/users/${profile.id}/follow`)
+      } else if (status === 'none') {
+        // Send follow request
+        const response = await api.post(`/users/${profile.id}/follow`)
+        const newStatus = response.data.relationship_status
         setProfile(prev => ({
           ...prev,
-          is_following: true,
-          followers_count: prev.followers_count + 1
+          is_following: newStatus === 'following',
+          relationship_status: newStatus,
+          followers_count: newStatus === 'following' ? prev.followers_count + 1 : prev.followers_count
         }))
       }
     } catch (error) {
@@ -264,25 +271,71 @@ export default function Profile() {
                     <MessageSquare className="w-4 h-4" />
                     Message
                   </button>
-                  <button
-                    onClick={handleFollowToggle}
-                    disabled={isFollowLoading}
-                    className={profile.is_following ? 'btn btn-outline' : 'btn btn-primary'}
-                  >
-                    {isFollowLoading ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : profile.is_following ? (
-                      <>
-                        <UserMinus className="w-4 h-4" />
-                        Unfollow
-                      </>
-                    ) : (
-                      <>
-                        <UserPlus className="w-4 h-4" />
-                        Follow
-                      </>
-                    )}
-                  </button>
+                  {(() => {
+                    const status = profile.relationship_status || (profile.is_following ? 'following' : 'none')
+
+                    if (status === 'following') {
+                      return (
+                        <button
+                          onClick={handleFollowToggle}
+                          disabled={isFollowLoading}
+                          className="btn btn-outline"
+                        >
+                          {isFollowLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
+                            <>
+                              <UserMinus className="w-4 h-4" />
+                              Following
+                            </>
+                          )}
+                        </button>
+                      )
+                    }
+
+                    if (status === 'pending_sent') {
+                      return (
+                        <button
+                          onClick={handleFollowToggle}
+                          disabled={isFollowLoading}
+                          className="btn btn-outline"
+                        >
+                          {isFollowLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
+                            <>
+                              <Clock className="w-4 h-4" />
+                              Requested
+                            </>
+                          )}
+                        </button>
+                      )
+                    }
+
+                    if (status === 'pending_received') {
+                      return (
+                        <button
+                          onClick={() => navigate('/requests')}
+                          className="btn btn-secondary"
+                        >
+                          <Check className="w-4 h-4" />
+                          Accept Request
+                        </button>
+                      )
+                    }
+
+                    // Default: none - show Follow button
+                    return (
+                      <button
+                        onClick={handleFollowToggle}
+                        disabled={isFollowLoading}
+                        className="btn btn-primary"
+                      >
+                        {isFollowLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
+                          <>
+                            <UserPlus className="w-4 h-4" />
+                            Follow
+                          </>
+                        )}
+                      </button>
+                    )
+                  })()}
                 </>
               )}
             </div>
