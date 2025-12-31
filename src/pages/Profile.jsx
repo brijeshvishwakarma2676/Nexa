@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Camera, Edit2, UserPlus, UserMinus, Loader2, Grid, MessageSquare, Clock, Check, X } from 'lucide-react'
+import { Camera, Edit2, UserPlus, UserMinus, Loader2, Grid, MessageSquare, Clock, Check, X, Lock } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
 import { useChatStore } from '../stores/chatStore'
 import api from '../services/api'
@@ -19,7 +19,7 @@ export default function Profile() {
   const [isFollowLoading, setIsFollowLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('posts')
   const [isEditing, setIsEditing] = useState(false)
-  const [editForm, setEditForm] = useState({ display_name: '', bio: '' })
+  const [editForm, setEditForm] = useState({ display_name: '', bio: '', is_private: false })
 
   // Follow modal state
   const [followModal, setFollowModal] = useState({ show: false, type: '', title: '', users: [], loading: false })
@@ -37,7 +37,8 @@ export default function Profile() {
         // Initialize edit form
         setEditForm({
           display_name: profileRes.data.display_name || '',
-          bio: profileRes.data.bio || ''
+          bio: profileRes.data.bio || '',
+          is_private: profileRes.data.is_private || false
         })
 
         // Fetch posts separately with user ID
@@ -248,8 +249,11 @@ export default function Profile() {
                   className="input mb-2"
                 />
               ) : (
-                <h1 className="text-2xl font-bold text-(--color-text-primary)">
+                <h1 className="text-2xl font-bold text-(--color-text-primary) flex items-center gap-2">
                   {profile.display_name || profile.username}
+                  {profile.is_private && (
+                    <Lock className="w-5 h-5 text-(--color-text-muted)" title="Private account" />
+                  )}
                 </h1>
               )}
               <p className="text-(--color-text-muted)">@{profile.username}</p>
@@ -362,13 +366,39 @@ export default function Profile() {
 
           {/* Bio */}
           {isEditing ? (
-            <textarea
-              value={editForm.bio}
-              onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })}
-              placeholder="Write something about yourself..."
-              rows={3}
-              className="input mt-4"
-            />
+            <>
+              <textarea
+                value={editForm.bio}
+                onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })}
+                placeholder="Write something about yourself..."
+                rows={3}
+                className="input mt-4"
+              />
+
+              {/* Privacy Toggle */}
+              <div className="flex items-center justify-between mt-4 p-4 rounded-lg bg-(--color-bg)">
+                <div className="flex items-center gap-3">
+                  <Lock className="w-5 h-5 text-(--color-text-muted)" />
+                  <div>
+                    <p className="font-medium text-(--color-text-primary)">Private Account</p>
+                    <p className="text-sm text-(--color-text-muted)">
+                      Only followers can see your posts and followers
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditForm({ ...editForm, is_private: !editForm.is_private })}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${editForm.is_private ? 'bg-(--color-primary)' : 'bg-(--color-border)'
+                    }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${editForm.is_private ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                  />
+                </button>
+              </div>
+            </>
           ) : profile.bio ? (
             <p className="mt-4 text-(--color-text-secondary)">
               {profile.bio}
@@ -379,28 +409,49 @@ export default function Profile() {
           <div className="flex gap-6 mt-6 pt-4 border-t border-(--color-border)">
             <div className="text-center">
               <p className="text-xl font-bold text-(--color-text-primary)">
-                {profile.posts_count}
+                {profile.is_accessible ? (profile.posts_count ?? 0) : (
+                  <Lock className="w-5 h-5 mx-auto text-(--color-text-muted)" />
+                )}
               </p>
               <p className="text-sm text-(--color-text-muted)">Posts</p>
             </div>
-            <button
-              onClick={() => fetchFollowList('followers')}
-              className="text-center hover:opacity-80 transition-opacity"
-            >
-              <p className="text-xl font-bold text-(--color-text-primary)">
-                {profile.followers_count}
-              </p>
-              <p className="text-sm text-(--color-text-muted)">Followers</p>
-            </button>
-            <button
-              onClick={() => fetchFollowList('following')}
-              className="text-center hover:opacity-80 transition-opacity"
-            >
-              <p className="text-xl font-bold text-(--color-text-primary)">
-                {profile.following_count}
-              </p>
-              <p className="text-sm text-(--color-text-muted)">Following</p>
-            </button>
+            {profile.is_accessible ? (
+              <>
+                <button
+                  onClick={() => fetchFollowList('followers')}
+                  className="text-center hover:opacity-80 transition-opacity"
+                >
+                  <p className="text-xl font-bold text-(--color-text-primary)">
+                    {profile.followers_count ?? 0}
+                  </p>
+                  <p className="text-sm text-(--color-text-muted)">Followers</p>
+                </button>
+                <button
+                  onClick={() => fetchFollowList('following')}
+                  className="text-center hover:opacity-80 transition-opacity"
+                >
+                  <p className="text-xl font-bold text-(--color-text-primary)">
+                    {profile.following_count ?? 0}
+                  </p>
+                  <p className="text-sm text-(--color-text-muted)">Following</p>
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="text-center">
+                  <p className="text-xl font-bold text-(--color-text-primary)">
+                    <Lock className="w-5 h-5 mx-auto text-(--color-text-muted)" />
+                  </p>
+                  <p className="text-sm text-(--color-text-muted)">Followers</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xl font-bold text-(--color-text-primary)">
+                    <Lock className="w-5 h-5 mx-auto text-(--color-text-muted)" />
+                  </p>
+                  <p className="text-sm text-(--color-text-muted)">Following</p>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -423,7 +474,17 @@ export default function Profile() {
 
       {/* Posts Grid */}
       <div className="space-y-4">
-        {posts.length === 0 ? (
+        {!profile.is_accessible ? (
+          <div className="card p-12 text-center">
+            <Lock className="w-16 h-16 mx-auto text-(--color-text-muted) mb-4" />
+            <h3 className="text-xl font-semibold text-(--color-text-primary) mb-2">
+              This Account is Private
+            </h3>
+            <p className="text-(--color-text-muted)">
+              Follow this account to see their photos and posts.
+            </p>
+          </div>
+        ) : posts.length === 0 ? (
           <div className="card p-12 text-center">
             <p className="text-(--color-text-muted)">
               {isOwner ? "You haven't posted anything yet." : "No posts yet."}

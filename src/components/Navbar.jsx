@@ -10,6 +10,7 @@ import { useChatStore } from '../stores/chatStore'
 import api from '../services/api'
 import { formatDistanceToNow } from 'date-fns'
 import  logo from '../assets/nexa_logo.png'
+import { UserPlus } from 'lucide-react'
 
 export default function Navbar() {
   const navigate = useNavigate()
@@ -37,6 +38,7 @@ export default function Navbar() {
     { icon: Play, path: '/videos', label: 'Video' },
     { icon: Users, path: '/groups', label: 'Groups' },
     { icon: MessageCircle, path: '/chat', label: 'Chat' },
+    { icon: UserPlus, path: '/requests', label: 'Requests' },
   ]
 
   // Close dropdowns on outside click
