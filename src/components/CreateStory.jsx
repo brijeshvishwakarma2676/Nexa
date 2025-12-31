@@ -423,9 +423,20 @@ export default function CreateStory({ isOpen, onClose }) {
                             rotatable={true}
                             origin={false}
                             keepRatio={selectedLayer?.type === 'image'}
-                            bounds={{ left: 0, top: 0, right: 0, bottom: 0, position: "css" }}
+
+                            // Snapping & Guidelines
                             snappable={true}
                             snapContainer={containerRef.current}
+                            snapCenter={true}
+                            snapDirections={{ top: true, left: true, bottom: true, right: true, center: true, middle: true }}
+                            elementSnapDirections={{ top: true, left: true, bottom: true, right: true, center: true, middle: true }}
+                            horizontalGuidelines={[containerRef.current?.offsetHeight / 2]}
+                            verticalGuidelines={[containerRef.current?.offsetWidth / 2]}
+                            snapThreshold={5}
+                            isDisplaySnapDigit={false}
+                            snapGap={true}
+                            snapRotationThreshold={5}
+                            snapRotationDegrees={[0, 90, 180, 270]}
 
                             onDragStart={e => {
                                 const layer = layers.find(l => l.id === selectedLayerId)
