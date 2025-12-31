@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { X, Type, Loader2, ChevronLeft, Camera, Sparkles, Plus, Trash2 } from 'lucide-react'
+import Moveable from 'react-moveable'
+import html2canvas from 'html2canvas'
 import { useStoryStore } from '../stores/storyStore'
 import { useAuthStore } from '../stores/authStore'
 import api from '../services/api'
@@ -19,219 +21,6 @@ const BACKGROUND_GRADIENTS = [
     { id: 8, gradient: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)' },
 ]
 
-const MIN_SCALE = 0.3
-const MAX_SCALE = 3.0
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// TEXT LAYER COMPONENT
-// Individual text element with drag/resize/rotate via pointer events
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function TextLayer({ layer, isSelected, onSelect, onUpdate, onDelete, onEdit, containerRef }) {
-    const elementRef = useRef(null)
-    const pointersRef = useRef(new Map()) // Track active pointers
-    const lastTapRef = useRef(0) // For double-tap detection
-    const gestureRef = useRef({
-        startX: 0, startY: 0,
-        startLayerX: 0, startLayerY: 0,
-        startScale: 1, startRotation: 0,
-        startDistance: 0, startAngle: 0,
-        gestureType: null // 'drag' | 'pinch'
-    })
-
-    // Get distance between two pointers
-    const getDistance = (p1, p2) => {
-        const dx = p2.clientX - p1.clientX
-        const dy = p2.clientY - p1.clientY
-        return Math.sqrt(dx * dx + dy * dy)
-    }
-
-    // Get angle between two pointers (radians)
-    const getAngle = (p1, p2) => {
-        return Math.atan2(p2.clientY - p1.clientY, p2.clientX - p1.clientX)
-    }
-
-    // Get center point between two pointers
-    const getCenter = (p1, p2) => ({
-        x: (p1.clientX + p2.clientX) / 2,
-        y: (p1.clientY + p2.clientY) / 2
-    })
-
-    const handlePointerDown = (e) => {
-        e.stopPropagation()
-        e.preventDefault()
-
-        // Select this layer
-        onSelect(layer.id)
-
-        // Track this pointer
-        pointersRef.current.set(e.pointerId, {
-            clientX: e.clientX,
-            clientY: e.clientY
-        })
-
-        // Capture pointer for reliable tracking outside element bounds
-        elementRef.current?.setPointerCapture(e.pointerId)
-
-        const pointers = Array.from(pointersRef.current.values())
-        const gesture = gestureRef.current
-
-        if (pointers.length === 1) {
-            // Single pointer: prepare for drag
-            gesture.gestureType = 'drag'
-            gesture.startX = e.clientX
-            gesture.startY = e.clientY
-            gesture.startLayerX = layer.x
-            gesture.startLayerY = layer.y
-        } else if (pointers.length === 2) {
-            // Two pointers: switch to pinch/rotate
-            gesture.gestureType = 'pinch'
-            gesture.startDistance = getDistance(pointers[0], pointers[1])
-            gesture.startAngle = getAngle(pointers[0], pointers[1])
-            gesture.startScale = layer.scale
-            gesture.startRotation = layer.rotation
-        }
-    }
-
-    const handlePointerMove = (e) => {
-        if (!pointersRef.current.has(e.pointerId)) return
-
-        // Update pointer position
-        pointersRef.current.set(e.pointerId, {
-            clientX: e.clientX,
-            clientY: e.clientY
-        })
-
-        const pointers = Array.from(pointersRef.current.values())
-        const gesture = gestureRef.current
-        const container = containerRef.current
-        if (!container) return
-
-        const rect = container.getBoundingClientRect()
-
-        if (gesture.gestureType === 'drag' && pointers.length === 1) {
-            // Single finger drag: translate only
-            const dx = e.clientX - gesture.startX
-            const dy = e.clientY - gesture.startY
-
-            // Convert to percentage of container
-            const newX = gesture.startLayerX + (dx / rect.width) * 100
-            const newY = gesture.startLayerY + (dy / rect.height) * 100
-
-            // Clamp to container bounds (with padding)
-            onUpdate(layer.id, {
-                x: Math.max(5, Math.min(95, newX)),
-                y: Math.max(5, Math.min(95, newY))
-            })
-        } else if (gesture.gestureType === 'pinch' && pointers.length === 2) {
-            // Two finger pinch: scale + rotate simultaneously
-            const currentDistance = getDistance(pointers[0], pointers[1])
-            const currentAngle = getAngle(pointers[0], pointers[1])
-
-            // Scale: ratio of current distance to start distance
-            const scaleRatio = currentDistance / gesture.startDistance
-            let newScale = gesture.startScale * scaleRatio
-            newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, newScale))
-
-            // Rotation: delta from start angle
-            const angleDelta = currentAngle - gesture.startAngle
-            const newRotation = gesture.startRotation + angleDelta
-
-            onUpdate(layer.id, {
-                scale: newScale,
-                rotation: newRotation
-            })
-        }
-    }
-
-    const handlePointerUp = (e) => {
-        pointersRef.current.delete(e.pointerId)
-        elementRef.current?.releasePointerCapture(e.pointerId)
-
-        // Double-tap detection for editing
-        const now = Date.now()
-        const gesture = gestureRef.current
-        const didDrag = Math.abs(e.clientX - gesture.startX) > 5 || Math.abs(e.clientY - gesture.startY) > 5
-
-        if (!didDrag && pointersRef.current.size === 0) {
-            if (now - lastTapRef.current < 300) {
-                // Double tap detected - trigger edit
-                onEdit(layer.id)
-                lastTapRef.current = 0
-            } else {
-                lastTapRef.current = now
-            }
-        }
-
-        // Reset gesture when all pointers released
-        if (pointersRef.current.size === 0) {
-            gestureRef.current.gestureType = null
-        } else if (pointersRef.current.size === 1) {
-            // Dropped to single pointer: switch back to drag mode
-            const remaining = Array.from(pointersRef.current.values())[0]
-            gesture.gestureType = 'drag'
-            gesture.startX = remaining.clientX
-            gesture.startY = remaining.clientY
-            gesture.startLayerX = layer.x
-            gesture.startLayerY = layer.y
-        }
-    }
-
-    // Build transform string - ORDER MATTERS: translate → rotate → scale
-    const transform = `translate(-50%, -50%) rotate(${layer.rotation}rad) scale(${layer.scale})`
-
-    return (
-        <div
-            ref={elementRef}
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onPointerCancel={handlePointerUp}
-            onDoubleClick={() => onEdit(layer.id)}
-            className={`absolute select-none touch-none cursor-move ${isSelected ? 'z-30' : 'z-20'
-                }`}
-            style={{
-                left: `${layer.x}%`,
-                top: `${layer.y}%`,
-                transform,
-                // GPU acceleration
-                willChange: 'transform',
-                // Prevent text selection during drag
-                userSelect: 'none',
-                WebkitUserSelect: 'none',
-            }}
-        >
-            <div
-                className={`px-4 py-2 rounded-lg ${isSelected
-                    ? 'bg-black/40 ring-2 ring-white ring-offset-2 ring-offset-transparent'
-                    : 'bg-black/20'
-                    } backdrop-blur-sm`}
-            >
-                <p
-                    className="text-white text-xl md:text-2xl font-bold text-center whitespace-pre-wrap"
-                    style={{ textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}
-                >
-                    {layer.text || 'Tap to edit'}
-                </p>
-            </div>
-
-            {/* Delete button - visible when selected */}
-            {isSelected && (
-                <button
-                    onClick={(e) => { e.stopPropagation(); onDelete(layer.id) }}
-                    className="absolute -top-3 -right-3 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center shadow-lg"
-                >
-                    <X className="w-4 h-4 text-white" />
-                </button>
-            )}
-        </div>
-    )
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// MAIN COMPONENT
-// ═══════════════════════════════════════════════════════════════════════════════
-
 export default function CreateStory({ isOpen, onClose }) {
     const { user } = useAuthStore()
     const { addStory, fetchStories } = useStoryStore()
@@ -245,15 +34,16 @@ export default function CreateStory({ isOpen, onClose }) {
     const [isPosting, setIsPosting] = useState(false)
     const [error, setError] = useState(null)
 
-    // Text layers state: array of { id, text, x, y, scale, rotation }
+    // Text layers state
     const [textLayers, setTextLayers] = useState([])
     const [selectedLayerId, setSelectedLayerId] = useState(null)
     const [editingLayerId, setEditingLayerId] = useState(null)
     const [editText, setEditText] = useState('')
 
     const fileInputRef = useRef(null)
-    const containerRef = useRef(null)
+    const containerRef = useRef(null) // capture target
     const editInputRef = useRef(null)
+    const moveableRef = useRef(null)
 
     // Reset state when modal closes
     useEffect(() => {
@@ -270,7 +60,7 @@ export default function CreateStory({ isOpen, onClose }) {
         }
     }, [isOpen])
 
-    // Focus edit input when editing
+    // Focus edit input
     useEffect(() => {
         if (editingLayerId && editInputRef.current) {
             editInputRef.current.focus()
@@ -285,11 +75,12 @@ export default function CreateStory({ isOpen, onClose }) {
     const addTextLayer = useCallback(() => {
         const newLayer = {
             id: Date.now(),
-            text: 'Double tap to edit',
-            x: 50, // center
-            y: 50,
-            scale: 1,
-            rotation: 0
+            text: 'Tap to edit',
+            translate: [0, 0],
+            rotate: 0,
+            scale: [1, 1],
+            color: '#ffffff',
+            fontSize: 24,
         }
         setTextLayers(prev => [...prev, newLayer])
         setSelectedLayerId(newLayer.id)
@@ -306,35 +97,22 @@ export default function CreateStory({ isOpen, onClose }) {
         if (selectedLayerId === id) setSelectedLayerId(null)
     }, [selectedLayerId])
 
-    const handleLayerSelect = useCallback((id) => {
-        setSelectedLayerId(id)
-    }, [])
-
-    // Double-tap to edit text
-    const handleLayerEdit = useCallback((id) => {
-        const layer = textLayers.find(l => l.id === id)
-        if (layer) {
-            setEditingLayerId(id)
-            setEditText(layer.text)
-        }
-    }, [textLayers])
-
     const handleEditConfirm = useCallback(() => {
         if (editingLayerId) {
             updateTextLayer(editingLayerId, { text: editText || 'Text' })
             setEditingLayerId(null)
             setEditText('')
+            // Reselect the layer after editing
+            setSelectedLayerId(editingLayerId)
         }
     }, [editingLayerId, editText, updateTextLayer])
 
-    // Deselect on background tap
-    const handleBackgroundClick = useCallback(() => {
-        setSelectedLayerId(null)
-        if (editingLayerId) handleEditConfirm()
-    }, [editingLayerId, handleEditConfirm])
+    const getTarget = () => {
+        return document.getElementById(`layer-${selectedLayerId}`)
+    }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // FILE & NAVIGATION HANDLERS
+    // FILE & NAVIGATION
     // ─────────────────────────────────────────────────────────────────────────
 
     const handleImageSelect = (e) => {
@@ -353,12 +131,13 @@ export default function CreateStory({ isOpen, onClose }) {
         setMode('image')
         setStep('edit')
         setError(null)
+        // Add initial text
+        setTimeout(addTextLayer, 100)
     }
 
     const handleTextMode = () => {
         setMode('text')
         setStep('edit')
-        // Add initial text layer
         addTextLayer()
     }
 
@@ -374,38 +153,60 @@ export default function CreateStory({ isOpen, onClose }) {
         }
     }
 
-    const handlePost = async () => {
-        if (mode === 'image' && !imageFile) return
-        if (mode === 'text' && textLayers.length === 0) return
+    // ─────────────────────────────────────────────────────────────────────────
+    // POST LOGIC (CONVERT TO IMAGE -> UPLOAD)
+    // ─────────────────────────────────────────────────────────────────────────
 
+    const handlePost = async () => {
+        if (isPosting) return
+
+        // 1. Deselect everything to hide handles
+        setSelectedLayerId(null)
         setIsPosting(true)
         setError(null)
 
         try {
-            let storyImageUrl = null
+            // Wait for UI to update (hide handles)
+            await new Promise(resolve => setTimeout(resolve, 100))
 
-            if (mode === 'image' && imageFile) {
-                const formData = new FormData()
-                formData.append('file', imageFile)
-                const uploadResponse = await api.post('/stories/upload-image', formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
-                })
-                storyImageUrl = uploadResponse.data.image_url
-            }
+            const element = containerRef.current
+            if (!element) throw new Error("Capture area not found")
 
-            // For text stories, combine all layer texts
-            const combinedText = textLayers.map(l => l.text).join('\n')
+            // 2. Capture the composed story as an image
+            const canvas = await html2canvas(element, {
+                useCORS: true, // Allow loading cross-origin images (like avatars)
+                scale: 2, // High res
+                backgroundColor: null, // Transparent if needed
+                logging: false
+            })
 
+            // 3. Convert canvas to Blob
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9))
+
+            // 4. Create File object
+            const file = new File([blob], `story-${Date.now()}.jpg`, { type: 'image/jpeg' })
+
+            // 5. Upload Image
+            const formData = new FormData()
+            formData.append('file', file)
+
+            const uploadResponse = await api.post('/stories/upload-image', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            })
+
+            // 6. Create Story (always image type now, since we flattened it)
             const storyData = {
-                content: mode === 'text' ? combinedText : null,
-                image_url: storyImageUrl
+                content: null, // Content burnt into image
+                image_url: uploadResponse.data.image_url
             }
 
             const response = await api.post('/stories', storyData)
             addStory(response.data, user)
             await fetchStories()
             onClose()
+
         } catch (err) {
+            console.error(err)
             setError(err.response?.data?.detail || 'Failed to create story')
         } finally {
             setIsPosting(false)
@@ -413,10 +214,6 @@ export default function CreateStory({ isOpen, onClose }) {
     }
 
     if (!isOpen) return null
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // RENDER
-    // ─────────────────────────────────────────────────────────────────────────
 
     return (
         <div className="fixed inset-0 bg-black z-50 flex flex-col">
@@ -434,13 +231,13 @@ export default function CreateStory({ isOpen, onClose }) {
                 </button>
 
                 <h2 className="text-white font-semibold text-lg">
-                    {step === 'select' ? 'Create Story' : mode === 'image' ? 'Edit Photo' : 'Create Text'}
+                    {step === 'select' ? 'Create Story' : 'Edit Story'}
                 </h2>
 
                 {step === 'edit' ? (
                     <button
                         onClick={handlePost}
-                        disabled={isPosting || (mode === 'text' && textLayers.length === 0)}
+                        disabled={isPosting}
                         className="px-4 py-2 bg-white text-black font-semibold rounded-full text-sm hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
                     >
                         {isPosting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Share'}
@@ -451,7 +248,7 @@ export default function CreateStory({ isOpen, onClose }) {
             </div>
 
             {/* Content */}
-            <div className="flex-1 flex items-center justify-center overflow-hidden">
+            <div className="flex-1 flex items-center justify-center overflow-hidden bg-[#1a1a1a]">
                 {/* Select Mode */}
                 {step === 'select' && (
                     <div className="w-full max-w-md px-6 space-y-4">
@@ -484,28 +281,20 @@ export default function CreateStory({ isOpen, onClose }) {
                                 </div>
                             </div>
                         </button>
-
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageSelect}
-                            className="hidden"
-                        />
                     </div>
                 )}
 
                 {/* Edit Mode */}
                 {step === 'edit' && (
-                    <div className="relative w-full h-full flex items-center justify-center px-4">
-                        {/* Story Preview Container */}
+                    <div className="relative w-full h-full flex items-center justify-center p-4">
+                        {/* Story Capture Container */}
                         <div
                             ref={containerRef}
-                            onClick={handleBackgroundClick}
-                            className="relative rounded-2xl overflow-hidden shadow-2xl w-full max-w-[360px] mx-auto touch-none"
+                            onClick={() => setSelectedLayerId(null)}
+                            className="relative rounded-xl overflow-hidden shadow-2xl w-full max-w-[360px] mx-auto bg-black"
                             style={{
                                 aspectRatio: '9/16',
-                                maxHeight: 'calc(100vh - 160px)'
+                                maxHeight: 'calc(100vh - 160px)',
                             }}
                         >
                             {/* Background: Image or Gradient */}
@@ -513,7 +302,7 @@ export default function CreateStory({ isOpen, onClose }) {
                                 <img
                                     src={imageUrl}
                                     alt="Story preview"
-                                    className="w-full h-full object-cover pointer-events-none"
+                                    className="w-full h-full object-cover pointer-events-none select-none"
                                 />
                             ) : (
                                 <div
@@ -524,38 +313,100 @@ export default function CreateStory({ isOpen, onClose }) {
 
                             {/* Text Layers */}
                             {textLayers.map(layer => (
-                                <TextLayer
+                                <div
                                     key={layer.id}
-                                    layer={layer}
-                                    isSelected={selectedLayerId === layer.id}
-                                    onSelect={handleLayerSelect}
-                                    onUpdate={updateTextLayer}
-                                    onDelete={deleteTextLayer}
-                                    onEdit={handleLayerEdit}
-                                    containerRef={containerRef}
-                                />
+                                    id={`layer-${layer.id}`}
+                                    className="absolute top-1/2 left-1/2 px-4 py-2 bg-black/30 backdrop-blur-sm rounded-lg"
+                                    style={{
+                                        transform: `translate(${layer.translate[0]}px, ${layer.translate[1]}px) rotate(${layer.rotate}deg) scale(${layer.scale[0]}, ${layer.scale[1]})`,
+                                        width: 'max-content',
+                                        maxWidth: '280px',
+                                        cursor: 'pointer',
+                                        zIndex: 10 // ensure text is above bg
+                                    }}
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        setSelectedLayerId(layer.id)
+                                    }}
+                                    onDoubleClick={(e) => {
+                                        e.stopPropagation()
+                                        setEditingLayerId(layer.id)
+                                        setEditText(layer.text)
+                                    }}
+                                    onTouchEnd={(e) => {
+                                        // Simple double tap detection logic could go here
+                                        // For now relying on button or double click
+                                        e.stopPropagation();
+                                        setSelectedLayerId(layer.id);
+                                    }}
+                                >
+                                    <p className="text-white font-bold text-center whitespace-pre-wrap select-none" style={{ fontSize: `${layer.fontSize}px`, textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+                                        {layer.text}
+                                    </p>
+                                </div>
                             ))}
 
-                            {/* User Avatar Overlay */}
-                            <div className="absolute top-4 left-4 flex items-center gap-2 z-10 pointer-events-none">
-                                <img
-                                    src={user?.avatar_url || `https://ui-avatars.com/api/?name=${user?.username}&background=4F46E5&color=fff`}
-                                    alt={user?.username}
-                                    className="w-8 h-8 rounded-full ring-2 ring-white"
-                                />
-                                <span className="text-white font-medium text-sm drop-shadow-lg">
-                                    Your Story
-                                </span>
-                            </div>
+                            {/* Moveable Controller */}
+                            {selectedLayerId && (
+                                <Moveable
+                                    target={getTarget()}
+                                    container={containerRef.current}
+                                    ref={moveableRef}
+                                    draggable={true}
+                                    throttleDrag={0}
+                                    resizable={true}
+                                    throttleResize={0}
+                                    rotatable={true}
+                                    throttleRotate={0}
+                                    origin={false}
+                                    padding={{ left: 10, top: 10, right: 10, bottom: 10 }}
 
-                            {/* Progress Bar */}
-                            <div className="absolute top-2 left-2 right-2 h-0.5 bg-white/30 rounded-full pointer-events-none" />
+                                    // Drag
+                                    onDragStart={e => e.set(textLayers.find(l => l.id === selectedLayerId).translate)}
+                                    onDrag={e => {
+                                        e.target.style.transform = e.transform
+                                        updateTextLayer(selectedLayerId, { translate: e.beforeTranslate })
+                                    }}
+
+                                    // Resize
+                                    onResizeStart={e => {
+                                        e.setOrigin(["%", "%"])
+                                        e.dragStart && e.dragStart.set(textLayers.find(l => l.id === selectedLayerId).translate)
+                                    }}
+                                    onResize={e => {
+                                        e.target.style.width = `${e.width}px`
+                                        e.target.style.height = `${e.height}px`
+                                        e.target.style.transform = e.drag.transform
+                                        updateTextLayer(selectedLayerId, { translate: e.drag.beforeTranslate })
+                                    }}
+
+                                    // Rotate
+                                    onRotateStart={e => e.set(textLayers.find(l => l.id === selectedLayerId).rotate)}
+                                    onRotate={e => {
+                                        e.target.style.transform = e.drag.transform
+                                        updateTextLayer(selectedLayerId, { rotate: e.beforeRotate })
+                                    }}
+                                />
+                            )}
+
+                            {/* Delete Button for Selected Layer */}
+                            {selectedLayerId && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        deleteTextLayer(selectedLayerId)
+                                    }}
+                                    className="absolute top-4 left-1/2 -translate-x-1/2 bg-red-500 p-2 rounded-full shadow-lg z-50 animate-in fade-in zoom-in duration-200"
+                                >
+                                    <Trash2 className="w-5 h-5 text-white" />
+                                </button>
+                            )}
                         </div>
 
                         {/* Floating Controls */}
-                        <div className="absolute bottom-4 left-0 right-0 flex flex-col items-center gap-3 px-4">
-                            {/* Add Text Button */}
-                            {mode === 'text' && (
+                        <div className="absolute bottom-4 left-0 right-0 flex flex-col items-center gap-3 px-4 pointer-events-none">
+                            <div className="pointer-events-auto flex gap-3">
+                                {/* Add Text Button */}
                                 <button
                                     onClick={addTextLayer}
                                     className="px-4 py-2 bg-white/20 backdrop-blur-sm text-white rounded-full text-sm hover:bg-white/30 transition-colors flex items-center gap-2"
@@ -563,11 +414,22 @@ export default function CreateStory({ isOpen, onClose }) {
                                     <Plus className="w-4 h-4" />
                                     Add Text
                                 </button>
-                            )}
+
+                                {/* Change Image Button */}
+                                {mode === 'image' && (
+                                    <button
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="px-4 py-2 bg-white/20 backdrop-blur-sm text-white rounded-full text-sm hover:bg-white/30 transition-colors flex items-center gap-2"
+                                    >
+                                        <Sparkles className="w-4 h-4" />
+                                        Replace
+                                    </button>
+                                )}
+                            </div>
 
                             {/* Background Selector */}
                             {mode === 'text' && (
-                                <div className="flex justify-center gap-2 overflow-x-auto pb-2">
+                                <div className="flex justify-center gap-2 overflow-x-auto pb-2 pointer-events-auto w-full max-w-sm">
                                     {BACKGROUND_GRADIENTS.map((bg, index) => (
                                         <button
                                             key={bg.id}
@@ -579,17 +441,6 @@ export default function CreateStory({ isOpen, onClose }) {
                                     ))}
                                 </div>
                             )}
-
-                            {/* Change Image Button */}
-                            {mode === 'image' && (
-                                <button
-                                    onClick={() => fileInputRef.current?.click()}
-                                    className="px-4 py-2 bg-white/20 backdrop-blur-sm text-white rounded-full text-sm hover:bg-white/30 transition-colors flex items-center gap-2"
-                                >
-                                    <Sparkles className="w-4 h-4" />
-                                    Change Photo
-                                </button>
-                            )}
                         </div>
                     </div>
                 )}
@@ -597,27 +448,27 @@ export default function CreateStory({ isOpen, onClose }) {
 
             {/* Text Edit Modal */}
             {editingLayerId && (
-                <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl p-4 w-full max-w-sm">
+                <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl p-4 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-lg font-bold mb-2">Edit Text</h3>
                         <input
                             ref={editInputRef}
                             type="text"
                             value={editText}
                             onChange={(e) => setEditText(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleEditConfirm()}
-                            placeholder="Enter text..."
-                            className="w-full px-4 py-3 border rounded-lg text-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                            className="w-full px-4 py-3 border rounded-lg text-lg focus:ring-2 focus:ring-blue-500 outline-none mb-3"
                         />
-                        <div className="flex gap-2 mt-3">
+                        <div className="flex gap-2">
                             <button
                                 onClick={() => { setEditingLayerId(null); setEditText('') }}
-                                className="flex-1 py-2 border rounded-lg font-medium"
+                                className="flex-1 py-2 border rounded-lg font-medium hover:bg-gray-50"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handleEditConfirm}
-                                className="flex-1 py-2 bg-blue-500 text-white rounded-lg font-medium"
+                                className="flex-1 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
                             >
                                 Done
                             </button>
@@ -628,7 +479,7 @@ export default function CreateStory({ isOpen, onClose }) {
 
             {/* Error Toast */}
             {error && (
-                <div className="absolute bottom-20 left-4 right-4 bg-red-500 text-white px-4 py-3 rounded-xl text-center text-sm z-50">
+                <div className="absolute bottom-20 left-4 right-4 bg-red-500 text-white px-4 py-3 rounded-xl text-center text-sm z-[70]">
                     {error}
                 </div>
             )}
