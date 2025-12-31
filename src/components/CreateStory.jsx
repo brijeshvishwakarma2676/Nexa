@@ -156,11 +156,17 @@ export default function CreateStory({ isOpen, onClose }) {
             setError('Image must be less than 10MB')
             return
         }
-        setImageFile(file)
-        setImageUrl(URL.createObjectURL(file))
-        setMode('image')
-        setStep('edit')
-        setError(null)
+
+        // Convert to data URL to avoid blob URL issues with html-to-image
+        const reader = new FileReader()
+        reader.onload = (event) => {
+            setImageUrl(event.target.result) // This is a data URL
+            setImageFile(file)
+            setMode('image')
+            setStep('edit')
+            setError(null)
+        }
+        reader.readAsDataURL(file)
     }
 
     const handleTextMode = () => {
@@ -207,7 +213,6 @@ export default function CreateStory({ isOpen, onClose }) {
             if (!element) throw new Error("Capture area not found")
 
             const dataUrl = await toPng(element, {
-                cacheBust: true,
                 pixelRatio: 2,
                 backgroundColor: '#000000',
                 skipFonts: true,
@@ -502,8 +507,8 @@ export default function CreateStory({ isOpen, onClose }) {
                                             key={font.id}
                                             onClick={() => updateTextLayer(selectedLayerId, { fontStyleId: font.id })}
                                             className={`px-3 py-1 text-white text-sm rounded-full whitespace-nowrap transition-all ${selectedLayer?.fontStyleId === font.id
-                                                    ? 'bg-white/40'
-                                                    : 'bg-white/10 hover:bg-white/20'
+                                                ? 'bg-white/40'
+                                                : 'bg-white/10 hover:bg-white/20'
                                                 }`}
                                             style={font.style}
                                         >
