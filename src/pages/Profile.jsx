@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Camera, Edit2, UserPlus, UserMinus, Loader2, Grid, MessageSquare, Clock, Check } from 'lucide-react'
+import { Camera, Edit2, UserPlus, UserMinus, Loader2, Grid, MessageSquare, Clock, Check, X } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
 import { useChatStore } from '../stores/chatStore'
 import api from '../services/api'
 import Post from '../components/Post'
+import RelationshipButton from '../components/RelationshipButton'
 
 export default function Profile() {
   const { username } = useParams()
@@ -19,6 +20,9 @@ export default function Profile() {
   const [activeTab, setActiveTab] = useState('posts')
   const [isEditing, setIsEditing] = useState(false)
   const [editForm, setEditForm] = useState({ display_name: '', bio: '' })
+
+  // Follow modal state
+  const [followModal, setFollowModal] = useState({ show: false, type: '', title: '', users: [], loading: false })
 
   const isOwner = currentUser?.username === username
 
@@ -108,6 +112,21 @@ export default function Profile() {
       setIsEditing(false)
     } catch (error) {
       console.error('Failed to update profile:', error)
+    }
+  }
+
+  // Fetch followers/following list
+  const fetchFollowList = async (type) => {
+    if (!profile) return
+
+    setFollowModal({ show: true, type, title: type === 'followers' ? 'Followers' : 'Following', users: [], loading: true })
+
+    try {
+      const response = await api.get(`/users/${profile.id}/${type}`)
+      setFollowModal(prev => ({ ...prev, users: response.data, loading: false }))
+    } catch (error) {
+      console.error(`Failed to fetch ${type}:`, error)
+      setFollowModal(prev => ({ ...prev, loading: false }))
     }
   }
 
@@ -364,18 +383,24 @@ export default function Profile() {
               </p>
               <p className="text-sm text-(--color-text-muted)">Posts</p>
             </div>
-            <div className="text-center">
+            <button
+              onClick={() => fetchFollowList('followers')}
+              className="text-center hover:opacity-80 transition-opacity"
+            >
               <p className="text-xl font-bold text-(--color-text-primary)">
                 {profile.followers_count}
               </p>
               <p className="text-sm text-(--color-text-muted)">Followers</p>
-            </div>
-            <div className="text-center">
+            </button>
+            <button
+              onClick={() => fetchFollowList('following')}
+              className="text-center hover:opacity-80 transition-opacity"
+            >
               <p className="text-xl font-bold text-(--color-text-primary)">
                 {profile.following_count}
               </p>
               <p className="text-sm text-(--color-text-muted)">Following</p>
-            </div>
+            </button>
           </div>
         </div>
       </div>
@@ -408,6 +433,76 @@ export default function Profile() {
           posts.map((post) => <Post key={post.id} post={post} />)
         )}
       </div>
+
+      {/* Followers/Following Modal */}
+      {followModal.show && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="card w-full max-w-md max-h-[80vh] flex flex-col overflow-hidden shadow-2xl">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b border-(--color-border)">
+              <h3 className="text-lg font-bold text-(--color-text-primary)">
+                {followModal.title}
+              </h3>
+              <button
+                onClick={() => setFollowModal({ ...followModal, show: false })}
+                className="p-1 rounded-full hover:bg-(--color-border) transition-colors"
+              >
+                <X className="w-5 h-5 text-(--color-text-muted)" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto p-2">
+              {followModal.loading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="w-8 h-8 text-(--color-primary) animate-spin" />
+                </div>
+              ) : followModal.users.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-(--color-text-muted)">
+                    No {followModal.type} found
+                  </p>
+                </div>
+              ) : (
+                <div className="divide-y divide-(--color-border)">
+                  {followModal.users.map((user) => (
+                    <div key={user.id} className="flex items-center justify-between p-3">
+                      <div
+                        className="flex items-center gap-3 cursor-pointer group"
+                        onClick={() => {
+                          setFollowModal({ ...followModal, show: false })
+                          navigate(`/profile/${user.username}`)
+                        }}
+                      >
+                        <img
+                          src={user.avatar_url || `https://ui-avatars.com/api/?name=${user.username}&background=4F46E5&color=fff`}
+                          alt={user.username}
+                          className="w-10 h-10 rounded-full avatar group-hover:ring-2 ring-(--color-primary) transition-all"
+                        />
+                        <div className="min-w-0">
+                          <p className="font-semibold text-(--color-text-primary) truncate">
+                            {user.display_name || user.username}
+                          </p>
+                          <p className="text-xs text-(--color-text-muted) truncate">
+                            @{user.username}
+                          </p>
+                        </div>
+                      </div>
+
+                      {currentUser?.id !== user.id && (
+                        <RelationshipButton
+                          userId={user.id}
+                          status={user.relationship_status || (user.is_following ? 'following' : 'none')}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

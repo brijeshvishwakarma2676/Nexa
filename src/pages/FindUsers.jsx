@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Search, Loader2, UserPlus, UserMinus, Clock, Users } from 'lucide-react'
+import { Search, Loader2, Users } from 'lucide-react'
 import { useFollowStore } from '../stores/followStore'
+import RelationshipButton from '../components/RelationshipButton'
 
 /**
  * Find Users Page
@@ -8,14 +9,11 @@ import { useFollowStore } from '../stores/followStore'
  */
 export default function FindUsers() {
   const [query, setQuery] = useState('')
-  const [actionLoading, setActionLoading] = useState({})
 
   const {
     searchResults,
     searchLoading,
     searchUsers,
-    followUser,
-    unfollowUser,
     clearSearch
   } = useFollowStore()
 
@@ -31,90 +29,6 @@ export default function FindUsers() {
 
     return () => clearTimeout(timer)
   }, [query, searchUsers, clearSearch])
-
-  const handleFollow = async (userId) => {
-    setActionLoading(prev => ({ ...prev, [userId]: true }))
-    try {
-      await followUser(userId)
-    } catch (error) {
-      console.error('Follow failed:', error)
-    } finally {
-      setActionLoading(prev => ({ ...prev, [userId]: false }))
-    }
-  }
-
-  const handleUnfollow = async (userId) => {
-    setActionLoading(prev => ({ ...prev, [userId]: true }))
-    try {
-      await unfollowUser(userId)
-    } catch (error) {
-      console.error('Unfollow failed:', error)
-    } finally {
-      setActionLoading(prev => ({ ...prev, [userId]: false }))
-    }
-  }
-
-  const renderButton = (user) => {
-    const isLoading = actionLoading[user.id]
-
-    switch (user.relationship_status) {
-      case 'following':
-        return (
-          <button
-            onClick={() => handleUnfollow(user.id)}
-            disabled={isLoading}
-            className="btn btn-secondary px-4"
-          >
-            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
-              <>
-                <Users className="w-4 h-4" />
-                Friends
-              </>
-            )}
-          </button>
-        )
-      case 'pending_sent':
-        return (
-          <button
-            onClick={() => handleUnfollow(user.id)}
-            disabled={isLoading}
-            className="btn btn-outline px-4"
-          >
-            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
-              <>
-                <Clock className="w-4 h-4" />
-                Requested
-              </>
-            )}
-          </button>
-        )
-      case 'pending_received':
-        return (
-          <button
-            disabled
-            className="btn btn-outline px-4 opacity-60"
-          >
-            <Clock className="w-4 h-4" />
-            Pending
-          </button>
-        )
-      default:
-        return (
-          <button
-            onClick={() => handleFollow(user.id)}
-            disabled={isLoading}
-            className="btn btn-primary px-4"
-          >
-            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
-              <>
-                <UserPlus className="w-4 h-4" />
-                Request
-              </>
-            )}
-          </button>
-        )
-    }
-  }
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -140,7 +54,7 @@ export default function FindUsers() {
         </div>
 
         {/* Results */}
-        <div className="divide-y divide-[var(--color-border)]">
+        <div className="divide-y divide-(--color-border)">
           {searchLoading ? (
             <div className="p-12 text-center">
               <Loader2 className="w-8 h-8 mx-auto text-(--color-primary) animate-spin" />
@@ -159,6 +73,12 @@ export default function FindUsers() {
               <div
                 key={user.id}
                 className="p-4 flex items-center gap-4 hover:bg-(--color-bg) transition-colors"
+                onClick={(e) => {
+                  // If clicking anything other than the button or its children
+                  if (!e.target.closest('button')) {
+                    // Navigate to profile (optional enhancement)
+                  }
+                }}
               >
                 {/* Avatar */}
                 <img
@@ -184,7 +104,7 @@ export default function FindUsers() {
                 </div>
 
                 {/* Action button */}
-                {renderButton(user)}
+                <RelationshipButton userId={user.id} status={user.relationship_status} />
               </div>
             ))
           )}

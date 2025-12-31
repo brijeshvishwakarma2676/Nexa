@@ -19,7 +19,7 @@ export default function Post({ post }) {
   const [showComments, setShowComments] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
-  const [isFollowing, setIsFollowing] = useState(false)
+  const [currentStatus, setCurrentStatus] = useState(post.relationship_status || 'none')
   const [isSharing, setIsSharing] = useState(false)
 
   const isOwner = user?.id === post.author.id
@@ -34,8 +34,8 @@ export default function Post({ post }) {
 
   const handleFollow = async () => {
     try {
-      await api.post(`/users/${post.author.id}/follow`)
-      setIsFollowing(true)
+      const response = await api.post(`/users/${post.author.id}/follow`)
+      setCurrentStatus(response.data.relationship_status)
     } catch (error) {
       console.error('Failed to follow:', error)
     }
@@ -95,7 +95,7 @@ export default function Post({ post }) {
               >
                 {post.author.display_name || post.author.username}
               </Link>
-              {!isOwner && !isFollowing && (
+              {!isOwner && currentStatus === 'none' && (
                 <>
                   <span className="text-(--color-text-muted)">·</span>
                   <button
@@ -104,6 +104,12 @@ export default function Post({ post }) {
                   >
                     Follow
                   </button>
+                </>
+              )}
+              {!isOwner && currentStatus === 'pending_sent' && (
+                <>
+                  <span className="text-(--color-text-muted)">·</span>
+                  <span className="text-(--color-text-muted) font-medium text-[14px]">Requested</span>
                 </>
               )}
             </div>
@@ -131,7 +137,7 @@ export default function Post({ post }) {
 
             {showMenu && (
               <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-(--color-border) py-1 z-10 animate-fadeIn">
-                {!isOwner && !isFollowing && (
+                {!isOwner && currentStatus === 'none' && (
                   <button
                     onClick={() => {
                       handleFollow()
@@ -234,8 +240,8 @@ export default function Post({ post }) {
         <button
           onClick={handleLike}
           className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg transition-colors font-medium ${post.is_liked
-              ? 'text-(--color-primary)'
-              : 'text-(--color-text-secondary) hover:bg-(--color-bg)'
+            ? 'text-(--color-primary)'
+            : 'text-(--color-text-secondary) hover:bg-(--color-bg)'
             }`}
         >
           <ThumbsUp
@@ -247,8 +253,8 @@ export default function Post({ post }) {
         <button
           onClick={() => setShowComments(!showComments)}
           className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg transition-colors font-medium ${showComments
-              ? 'text-(--color-primary)'
-              : 'text-(--color-text-secondary) hover:bg-(--color-bg)'
+            ? 'text-(--color-primary)'
+            : 'text-(--color-text-secondary) hover:bg-(--color-bg)'
             }`}
         >
           <MessageCircle className="w-5 h-5" />

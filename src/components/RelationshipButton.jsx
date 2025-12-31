@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Loader2, UserPlus, UserMinus, Clock, Check } from 'lucide-react'
 import { useFollowStore } from '../stores/followStore'
@@ -18,6 +18,13 @@ export default function RelationshipButton({ userId, status, onUpdate }) {
   const [loading, setLoading] = useState(false)
   const [currentStatus, setCurrentStatus] = useState(status)
   const navigate = useNavigate()
+
+  // Update internal state if prop changes
+  useEffect(() => {
+    setCurrentStatus(status)
+  }, [status])
+
+  if (currentStatus === 'self') return null // Don't show button for own profile
 
   const handleClick = async () => {
     setLoading(true)
