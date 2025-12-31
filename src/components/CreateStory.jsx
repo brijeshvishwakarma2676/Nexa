@@ -187,6 +187,7 @@ function TextLayer({ layer, isSelected, onSelect, onUpdate, onDelete, onEdit, co
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
+            onDoubleClick={() => onEdit(layer.id)}
             className={`absolute select-none touch-none cursor-move ${isSelected ? 'z-30' : 'z-20'
                 }`}
             style={{
