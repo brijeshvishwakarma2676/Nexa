@@ -42,7 +42,7 @@ export default function Feed() {
   )
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-3xl mx-auto">
       {/* Stories */}
       <StoryBar />
 

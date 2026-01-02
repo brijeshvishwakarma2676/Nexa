@@ -4,8 +4,9 @@ import Navbar from './Navbar'
 import Sidebar from './Sidebar'
 import { useChatStore } from '../stores/chatStore'
 import { useNotificationStore } from '../stores/notificationStore'
+import { Toaster } from 'react-hot-toast'
 
-export default function Layout() {
+function Layout() {
   const { connectWebSocket, disconnectWebSocket } = useChatStore()
   const { fetchUnreadCount } = useNotificationStore()
 
@@ -27,6 +28,7 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen bg-(--color-bg)">
+      <Toaster position="top-right" />
       {/* Top Navigation */}
       <Navbar />
 
@@ -36,12 +38,12 @@ export default function Layout() {
         {/* <Sidebar /> */}
 
         {/* Main Content */}
-        <main className="flex-1 min-h-[calc(100vh-4rem)]">
-          <div className="max-w-2xl mx-auto ">
-            <Outlet />
-          </div>
+        <main className="flex-1 min-h-[calc(100vh-4rem)] px-4">
+          <Outlet />
         </main>
       </div>
     </div>
   )
 }
+
+export default Layout

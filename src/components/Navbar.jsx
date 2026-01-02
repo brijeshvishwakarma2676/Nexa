@@ -9,7 +9,7 @@ import { useNotificationStore } from '../stores/notificationStore'
 import { useChatStore } from '../stores/chatStore'
 import api from '../services/api'
 import { formatDistanceToNow } from 'date-fns'
-import  logo from '../assets/nexa_logo.png'
+import logo from '../assets/nexa_logo.png'
 import { UserPlus } from 'lucide-react'
 
 export default function Navbar() {
@@ -24,6 +24,7 @@ export default function Navbar() {
   const [showSearch, setShowSearch] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false)
 
   const searchRef = useRef(null)
   const notifRef = useRef(null)
@@ -344,10 +345,9 @@ export default function Navbar() {
 
                 {/* Menu Items */}
                 <div className="p-2">
-                  <Link
-                    to="/settings"
-                    onClick={() => setShowProfile(false)}
-                    className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-(--color-bg) transition-colors"
+                  <button
+                    onClick={() => setShowSettingsMenu(true)}
+                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-(--color-bg) transition-colors"
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full bg-(--color-bg) flex items-center justify-center">
@@ -361,7 +361,89 @@ export default function Navbar() {
                     <svg className="w-5 h-5 text-(--color-text-muted)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
-                  </Link>
+                  </button>
+
+                  {/* Settings & Privacy Submenu */}
+                  {showSettingsMenu && (
+                    <div className="absolute inset-0 bg-(--color-card) rounded-xl animate-slideIn z-10">
+                      {/* Header with back button */}
+                      <div className="flex items-center gap-3 px-4 py-3 border-b border-(--color-border)">
+                        <button
+                          onClick={() => setShowSettingsMenu(false)}
+                          className="w-9 h-9 rounded-full bg-(--color-bg) hover:bg-gray-200 flex items-center justify-center transition-colors"
+                        >
+                          <ArrowLeft className="w-5 h-5 text-(--color-text-primary)" />
+                        </button>
+                        <h3 className="text-xl font-bold text-(--color-text-primary)">Settings & privacy</h3>
+                      </div>
+
+                      {/* Settings Menu Items */}
+                      <div className="p-2 space-y-1">
+                        <button
+                          onClick={() => { setShowSettingsMenu(false); setShowProfile(false); navigate('/profile/' + user?.username); }}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-(--color-bg) transition-colors"
+                        >
+                          <div className="w-9 h-9 rounded-full bg-(--color-bg) flex items-center justify-center">
+                            <svg className="w-5 h-5 text-(--color-text-primary)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                          </div>
+                          <span className="font-medium text-(--color-text-primary)">Settings</span>
+                        </button>
+
+                        <button className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-(--color-bg) transition-colors">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full bg-(--color-bg) flex items-center justify-center">
+                              <svg className="w-5 h-5 text-(--color-text-primary)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                            </div>
+                            <span className="font-medium text-(--color-text-primary)">Language</span>
+                          </div>
+                          <svg className="w-5 h-5 text-(--color-text-muted)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </button>
+
+                        <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-(--color-bg) transition-colors">
+                          <div className="w-9 h-9 rounded-full bg-(--color-bg) flex items-center justify-center">
+                            <svg className="w-5 h-5 text-(--color-text-primary)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                            </svg>
+                          </div>
+                          <span className="font-medium text-(--color-text-primary)">Privacy Checkup</span>
+                        </button>
+
+                        <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-(--color-bg) transition-colors">
+                          <div className="w-9 h-9 rounded-full bg-(--color-bg) flex items-center justify-center">
+                            <svg className="w-5 h-5 text-(--color-text-primary)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                          </div>
+                          <span className="font-medium text-(--color-text-primary)">Privacy Centre</span>
+                        </button>
+
+                        <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-(--color-bg) transition-colors">
+                          <div className="w-9 h-9 rounded-full bg-(--color-bg) flex items-center justify-center">
+                            <svg className="w-5 h-5 text-(--color-text-primary)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                            </svg>
+                          </div>
+                          <span className="font-medium text-(--color-text-primary)">Activity log</span>
+                        </button>
+
+                        <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-(--color-bg) transition-colors">
+                          <div className="w-9 h-9 rounded-full bg-(--color-bg) flex items-center justify-center">
+                            <svg className="w-5 h-5 text-(--color-text-primary)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                            </svg>
+                          </div>
+                          <span className="font-medium text-(--color-text-primary)">Content preferences</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   <Link
                     to="/help"

@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Camera, Edit2, UserPlus, UserMinus, Loader2, Grid, MessageSquare, Clock, Check, X, Lock } from 'lucide-react'
+import {
+  Camera, Edit2, UserPlus, UserMinus, Loader2, MessageSquare,
+  Clock, Check, X, Lock, MapPin, Briefcase, GraduationCap,
+  Home, Heart, Globe, Plus, MoreHorizontal, Images, Users, ArrowLeft
+} from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
 import { useChatStore } from '../stores/chatStore'
 import api from '../services/api'
 import Post from '../components/Post'
-import RelationshipButton from '../components/RelationshipButton'
+import toast from 'react-hot-toast'
 
 export default function Profile() {
   const { username } = useParams()
@@ -15,87 +19,87 @@ export default function Profile() {
 
   const [profile, setProfile] = useState(null)
   const [posts, setPosts] = useState([])
+  const [photos, setPhotos] = useState([])
+  const [friends, setFriends] = useState({ friends: [], total: 0 })
   const [isLoading, setIsLoading] = useState(true)
   const [isFollowLoading, setIsFollowLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('posts')
   const [isEditing, setIsEditing] = useState(false)
-  const [editForm, setEditForm] = useState({ display_name: '', bio: '', is_private: false })
-
-  // Follow modal state
-  const [followModal, setFollowModal] = useState({ show: false, type: '', title: '', users: [], loading: false })
+  const [editForm, setEditForm] = useState({
+    display_name: '', bio: '', is_private: false,
+    workplace: '', education: '', location: '', hometown: '',
+    relationship_status: '', website: ''
+  })
 
   const isOwner = currentUser?.username === username
 
-  // Fetch profile and posts
+  // Tabs
+  const tabs = [
+    { id: 'posts', label: 'Posts' },
+    { id: 'about', label: 'About' },
+    { id: 'friends', label: 'Friends' },
+    { id: 'photos', label: 'Photos' },
+  ]
+
+  // Fetch profile data
   useEffect(() => {
-    const fetchProfile = async () => {
+    const fetchAll = async () => {
       setIsLoading(true)
       try {
         const profileRes = await api.get(`/users/${username}`)
         setProfile(profileRes.data)
 
-        // Initialize edit form
         setEditForm({
           display_name: profileRes.data.display_name || '',
           bio: profileRes.data.bio || '',
-          is_private: profileRes.data.is_private || false
+          is_private: profileRes.data.is_private || false,
+          workplace: profileRes.data.workplace || '',
+          education: profileRes.data.education || '',
+          location: profileRes.data.location || '',
+          hometown: profileRes.data.hometown || '',
+          relationship_status: profileRes.data.user_relationship_status || '',
+          website: profileRes.data.website || ''
         })
 
-        // Fetch posts separately with user ID
-        const postsRes = await api.get(`/posts/user/${profileRes.data.id}`, {
-          params: { limit: 20 }
-        }).catch(() => ({ data: { posts: [] } }))
-
+        // Fetch posts
+        const postsRes = await api.get(`/posts/user/${profileRes.data.id}`, { params: { limit: 20 } })
+          .catch(() => ({ data: { posts: [] } }))
         setPosts(postsRes.data.posts || [])
+
+        // Fetch photos and friends
+        const [photosRes, friendsRes] = await Promise.all([
+          api.get(`/users/${profileRes.data.id}/photos`).catch(() => ({ data: { photos: [] } })),
+          api.get(`/users/${profileRes.data.id}/friends`).catch(() => ({ data: { friends: [], total: 0 } }))
+        ])
+        setPhotos(photosRes.data.photos || [])
+        setFriends(friendsRes.data)
+
       } catch (error) {
         console.error('Failed to load profile:', error)
-        if (error.response?.status === 404) {
-          // Could handle redirect or show not found
-        }
       } finally {
         setIsLoading(false)
       }
     }
-
-    fetchProfile()
+    fetchAll()
   }, [username])
 
-  // Message handler
   const handleMessage = async () => {
     if (!profile) return
     const conversation = await startConversation(profile.id)
-    if (conversation) {
-      navigate(`/chat/${conversation.id}`)
-    }
+    if (conversation) navigate(`/chat/${conversation.id}`)
   }
 
-  // Follow/Unfollow - handles all relationship states
   const handleFollowToggle = async () => {
     if (!profile) return
-
     setIsFollowLoading(true)
     try {
       const status = profile.relationship_status || (profile.is_following ? 'following' : 'none')
-
       if (status === 'following' || status === 'pending_sent') {
-        // Unfollow or cancel request
         await api.delete(`/users/${profile.id}/follow`)
-        setProfile(prev => ({
-          ...prev,
-          is_following: false,
-          relationship_status: 'none',
-          followers_count: status === 'following' ? prev.followers_count - 1 : prev.followers_count
-        }))
-      } else if (status === 'none') {
-        // Send follow request
+        setProfile(prev => ({ ...prev, is_following: false, relationship_status: 'none' }))
+      } else {
         const response = await api.post(`/users/${profile.id}/follow`)
-        const newStatus = response.data.relationship_status
-        setProfile(prev => ({
-          ...prev,
-          is_following: newStatus === 'following',
-          relationship_status: newStatus,
-          followers_count: newStatus === 'following' ? prev.followers_count + 1 : prev.followers_count
-        }))
+        setProfile(prev => ({ ...prev, relationship_status: response.data.relationship_status }))
       }
     } catch (error) {
       console.error('Failed to toggle follow:', error)
@@ -104,7 +108,6 @@ export default function Profile() {
     }
   }
 
-  // Update profile
   const handleUpdateProfile = async () => {
     try {
       const response = await api.patch('/users/me', editForm)
@@ -116,56 +119,60 @@ export default function Profile() {
     }
   }
 
-  // Fetch followers/following list
-  const fetchFollowList = async (type) => {
-    if (!profile) return
-
-    setFollowModal({ show: true, type, title: type === 'followers' ? 'Followers' : 'Following', users: [], loading: true })
-
-    try {
-      const response = await api.get(`/users/${profile.id}/${type}`)
-      setFollowModal(prev => ({ ...prev, users: response.data, loading: false }))
-    } catch (error) {
-      console.error(`Failed to fetch ${type}:`, error)
-      setFollowModal(prev => ({ ...prev, loading: false }))
-    }
-  }
-
-  // Upload avatar
   const handleAvatarUpload = async (e) => {
     const file = e.target.files[0]
     if (!file) return
-
     const formData = new FormData()
     formData.append('file', file)
-
     try {
       const response = await api.post('/users/me/avatar', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
       setProfile(prev => ({ ...prev, ...response.data }))
       updateUser(response.data)
+      toast.success('Avatar updated successfully!')
     } catch (error) {
       console.error('Failed to upload avatar:', error)
+      toast.error('Failed to update avatar.')
     }
   }
 
-  // Upload cover
   const handleCoverUpload = async (e) => {
     const file = e.target.files[0]
     if (!file) return
 
-    const formData = new FormData()
-    formData.append('file', file)
+    // Frontend validation for dimensions
+    const img = new Image()
+    img.src = URL.createObjectURL(file)
+    img.onload = async () => {
+      const width = img.width
+      const height = img.height
 
-    try {
-      const response = await api.post('/users/me/cover', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      })
-      setProfile(prev => ({ ...prev, ...response.data }))
-      updateUser(response.data)
-    } catch (error) {
-      console.error('Failed to upload cover:', error)
+      // Ideal dimensions: 851 x 315
+      if (width < 400 || height < 150) {
+        toast.error('Image is too small for a cover photo. Minimum 400x150 recommended.')
+        return
+      }
+
+      if (width < 851 || height < 315) {
+        toast.loading('Image is smaller than recommended (851x315). It might look blurry.', { duration: 3000 })
+      }
+
+      const formData = new FormData()
+      formData.append('file', file)
+      const uploadToast = toast.loading('Uploading and processing cover photo...')
+
+      try {
+        const response = await api.post('/users/me/cover', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        })
+        setProfile(prev => ({ ...prev, ...response.data }))
+        updateUser(response.data)
+        toast.success('Cover photo updated and optimized!', { id: uploadToast })
+      } catch (error) {
+        console.error('Failed to upload cover:', error)
+        toast.error('Failed to update cover photo.', { id: uploadToast })
+      }
     }
   }
 
@@ -180,390 +187,398 @@ export default function Profile() {
   if (!profile) {
     return (
       <div className="card p-12 text-center">
-        <h2 className="text-xl font-semibold text-(--color-text-primary)">
-          User not found
-        </h2>
+        <h2 className="text-xl font-semibold text-(--color-text-primary)">User not found</h2>
       </div>
     )
   }
 
+  const relationshipStatus = profile.relationship_status || (profile.is_following ? 'following' : 'none')
+
   return (
-    <div className="space-y-6">
+    <div className="mx-auto" style={{ maxWidth: '1100px' }}>
+      {/* Cover Photo - Facebook style with ideal 851:315 ratio */}
+      <div className="relative h-[250px] md:h-[407px] bg-linear-to-r from-gray-200 to-gray-300 rounded-b-xl overflow-hidden shadow-sm group">
+        {/* Back Button */}
+        <button
+          onClick={() => navigate(-1)}
+          className="absolute top-4 left-4 p-2 bg-white/80 hover:bg-white rounded-full shadow-lg transition-all duration-200 z-10 backdrop-blur-sm"
+        >
+          <ArrowLeft className="w-5 h-5 text-gray-700" />
+        </button>
+
+        {profile.cover_url ? (
+          <img
+            src={profile.cover_url}
+            alt="Cover"
+            className="w-full h-full object-cover transition-transform duration-500 hover:scale-[1.02]"
+          />
+        ) : (
+          <div className="w-full h-full bg-linear-to-r from-blue-400 via-indigo-400 to-purple-500 opacity-80" />
+        )}
+
+        {isOwner && (
+          <label className="absolute bottom-4 right-4 flex items-center gap-2 px-4 py-2.5 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg cursor-pointer hover:bg-white transition-all font-semibold text-sm border border-gray-200/50">
+            <Camera className="w-4 h-4" />
+            <span className="hidden md:inline">Edit cover photo</span>
+            <input type="file" accept="image/*" onChange={handleCoverUpload} className="hidden" />
+          </label>
+        )}
+      </div>
+
       {/* Profile Header */}
-      <div className="card overflow-hidden">
-        {/* Cover Image */}
-        <div className="relative h-48 bg-linear-to-r from-(--color-primary) to-(--color-secondary)">
-          {profile.cover_url && (
-            <img
-              src={profile.cover_url}
-              alt="Cover"
-              className="w-full h-full object-cover"
-            />
-          )}
-
-          {isOwner && (
-            <label className="absolute bottom-4 right-4 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 cursor-pointer transition-colors">
-              <Camera className="w-5 h-5" />
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleCoverUpload}
-                className="hidden"
-              />
-            </label>
-          )}
-        </div>
-
-        {/* Profile Info */}
-        <div className="relative px-6 pb-6">
+      <div className="relative px-4 md:px-8 pb-4 bg-(--color-card) border-b border-(--color-border)">
+        <div className="flex flex-col md:flex-row md:items-end gap-4">
           {/* Avatar */}
-          <div className="relative -mt-16 mb-4">
+          <div className="relative -mt-20 md:-mt-24 shrink-0">
             <img
-              src={profile.avatar_url || `https://ui-avatars.com/api/?name=${profile.username}&background=4F46E5&color=fff&size=128`}
+              src={profile.avatar_url || `https://ui-avatars.com/api/?name=${profile.username}&background=4F46E5&color=fff&size=168`}
               alt={profile.username}
-              className="w-32 h-32 rounded-full avatar ring-4 ring-white"
+              className="w-36 h-36 md:w-44 md:h-44 rounded-full border-4 border-white shadow-lg object-cover bg-white"
             />
-
             {isOwner && (
-              <label className="absolute bottom-2 right-2 p-2 rounded-full bg-(--color-primary) text-white hover:bg-(--color-primary-hover) cursor-pointer transition-colors">
-                <Camera className="w-4 h-4" />
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleAvatarUpload}
-                  className="hidden"
-                />
+              <label className="absolute bottom-2 right-2 p-2 bg-(--color-bg) rounded-full shadow cursor-pointer hover:bg-gray-200 transition">
+                <Camera className="w-5 h-5" />
+                <input type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
               </label>
             )}
           </div>
 
-          {/* Name and Username */}
-          <div className="flex items-start justify-between">
-            <div>
-              {isEditing ? (
-                <input
-                  type="text"
-                  value={editForm.display_name}
-                  onChange={(e) => setEditForm({ ...editForm, display_name: e.target.value })}
-                  placeholder="Display name"
-                  className="input mb-2"
-                />
-              ) : (
-                <h1 className="text-2xl font-bold text-(--color-text-primary) flex items-center gap-2">
-                  {profile.display_name || profile.username}
-                  {profile.is_private && (
-                    <Lock className="w-5 h-5 text-(--color-text-muted)" title="Private account" />
-                  )}
-                </h1>
-              )}
-              <p className="text-(--color-text-muted)">@{profile.username}</p>
-            </div>
+          {/* Name & Actions */}
+          <div className="flex-1 md:ml-4 pb-4">
+            <h1 className="text-2xl md:text-3xl font-bold text-(--color-text-primary) flex items-center gap-2">
+              {profile.display_name || profile.username}
+              {profile.is_private && <Lock className="w-5 h-5 text-(--color-text-muted)" />}
+            </h1>
+            <p className="text-(--color-text-muted) mb-2">
+              {friends.total} friends · {profile.followers_count ?? 0} followers
+            </p>
 
-            <div className="flex gap-2">
-              {isOwner ? (
-                isEditing ? (
-                  <>
-                    <button
-                      onClick={() => setIsEditing(false)}
-                      className="btn btn-outline"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleUpdateProfile}
-                      className="btn btn-primary"
-                    >
-                      Save
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    onClick={() => setIsEditing(true)}
-                    className="btn btn-outline"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                    Edit Profile
-                  </button>
-                )
-              ) : (
-                <>
-                  <button
-                    onClick={handleMessage}
-                    className="btn btn-secondary"
-                  >
-                    <MessageSquare className="w-4 h-4" />
-                    Message
-                  </button>
-                  {(() => {
-                    const status = profile.relationship_status || (profile.is_following ? 'following' : 'none')
-
-                    if (status === 'following') {
-                      return (
-                        <button
-                          onClick={handleFollowToggle}
-                          disabled={isFollowLoading}
-                          className="btn btn-outline"
-                        >
-                          {isFollowLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
-                            <>
-                              <UserMinus className="w-4 h-4" />
-                              Following
-                            </>
-                          )}
-                        </button>
-                      )
-                    }
-
-                    if (status === 'pending_sent') {
-                      return (
-                        <button
-                          onClick={handleFollowToggle}
-                          disabled={isFollowLoading}
-                          className="btn btn-outline"
-                        >
-                          {isFollowLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
-                            <>
-                              <Clock className="w-4 h-4" />
-                              Requested
-                            </>
-                          )}
-                        </button>
-                      )
-                    }
-
-                    if (status === 'pending_received') {
-                      return (
-                        <button
-                          onClick={() => navigate('/requests')}
-                          className="btn btn-secondary"
-                        >
-                          <Check className="w-4 h-4" />
-                          Accept Request
-                        </button>
-                      )
-                    }
-
-                    // Default: none - show Follow button
-                    return (
-                      <button
-                        onClick={handleFollowToggle}
-                        disabled={isFollowLoading}
-                        className="btn btn-primary"
-                      >
-                        {isFollowLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
-                          <>
-                            <UserPlus className="w-4 h-4" />
-                            Follow
-                          </>
-                        )}
-                      </button>
-                    )
-                  })()}
-                </>
-              )}
-            </div>
+            {/* Friend avatars preview */}
+            {friends.friends.length > 0 && (
+              <div className="flex -space-x-2">
+                {friends.friends.slice(0, 8).map(f => (
+                  <img
+                    key={f.id}
+                    src={f.avatar_url || `https://ui-avatars.com/api/?name=${f.username}&size=32`}
+                    alt={f.username}
+                    className="w-8 h-8 rounded-full border-2 border-white"
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Bio */}
-          {isEditing ? (
-            <>
-              <textarea
-                value={editForm.bio}
-                onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })}
-                placeholder="Write something about yourself..."
-                rows={3}
-                className="input mt-4"
-              />
-
-              {/* Privacy Toggle */}
-              <div className="flex items-center justify-between mt-4 p-4 rounded-lg bg-(--color-bg)">
-                <div className="flex items-center gap-3">
-                  <Lock className="w-5 h-5 text-(--color-text-muted)" />
-                  <div>
-                    <p className="font-medium text-(--color-text-primary)">Private Account</p>
-                    <p className="text-sm text-(--color-text-muted)">
-                      Only followers can see your posts and followers
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setEditForm({ ...editForm, is_private: !editForm.is_private })}
-                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${editForm.is_private ? 'bg-(--color-primary)' : 'bg-(--color-border)'
-                    }`}
-                >
-                  <span
-                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${editForm.is_private ? 'translate-x-5' : 'translate-x-0'
-                      }`}
-                  />
-                </button>
-              </div>
-            </>
-          ) : profile.bio ? (
-            <p className="mt-4 text-(--color-text-secondary)">
-              {profile.bio}
-            </p>
-          ) : null}
-
-          {/* Stats */}
-          <div className="flex gap-6 mt-6 pt-4 border-t border-(--color-border)">
-            <div className="text-center">
-              <p className="text-xl font-bold text-(--color-text-primary)">
-                {profile.is_accessible ? (profile.posts_count ?? 0) : (
-                  <Lock className="w-5 h-5 mx-auto text-(--color-text-muted)" />
-                )}
-              </p>
-              <p className="text-sm text-(--color-text-muted)">Posts</p>
-            </div>
-            {profile.is_accessible ? (
+          {/* Action Buttons */}
+          <div className="flex gap-2 pb-4">
+            {isOwner ? (
               <>
-                <button
-                  onClick={() => fetchFollowList('followers')}
-                  className="text-center hover:opacity-80 transition-opacity"
-                >
-                  <p className="text-xl font-bold text-(--color-text-primary)">
-                    {profile.followers_count ?? 0}
-                  </p>
-                  <p className="text-sm text-(--color-text-muted)">Followers</p>
+                <button className="btn btn-primary flex items-center gap-2">
+                  <Plus className="w-4 h-4" /> Add to story
                 </button>
-                <button
-                  onClick={() => fetchFollowList('following')}
-                  className="text-center hover:opacity-80 transition-opacity"
-                >
-                  <p className="text-xl font-bold text-(--color-text-primary)">
-                    {profile.following_count ?? 0}
-                  </p>
-                  <p className="text-sm text-(--color-text-muted)">Following</p>
+                <button onClick={() => setIsEditing(true)} className="btn btn-secondary flex items-center gap-2">
+                  <Edit2 className="w-4 h-4" /> Edit profile
                 </button>
               </>
             ) : (
               <>
-                <div className="text-center">
-                  <p className="text-xl font-bold text-(--color-text-primary)">
-                    <Lock className="w-5 h-5 mx-auto text-(--color-text-muted)" />
-                  </p>
-                  <p className="text-sm text-(--color-text-muted)">Followers</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xl font-bold text-(--color-text-primary)">
-                    <Lock className="w-5 h-5 mx-auto text-(--color-text-muted)" />
-                  </p>
-                  <p className="text-sm text-(--color-text-muted)">Following</p>
-                </div>
+                {relationshipStatus === 'following' ? (
+                  <button onClick={handleFollowToggle} disabled={isFollowLoading} className="btn btn-secondary flex items-center gap-2">
+                    {isFollowLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4" /> Friends</>}
+                  </button>
+                ) : relationshipStatus === 'pending_sent' ? (
+                  <button onClick={handleFollowToggle} disabled={isFollowLoading} className="btn btn-outline flex items-center gap-2">
+                    {isFollowLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Clock className="w-4 h-4" /> Requested</>}
+                  </button>
+                ) : (
+                  <button onClick={handleFollowToggle} disabled={isFollowLoading} className="btn btn-primary flex items-center gap-2">
+                    {isFollowLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><UserPlus className="w-4 h-4" /> Add friend</>}
+                  </button>
+                )}
+                <button onClick={handleMessage} className="btn btn-secondary flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4" /> Message
+                </button>
               </>
             )}
           </div>
         </div>
-      </div>
 
-      {/* Tabs */}
-      <div className="card">
-        <div className="flex border-b border-(--color-border)">
-          <button
-            onClick={() => setActiveTab('posts')}
-            className={`flex-1 flex items-center justify-center gap-2 py-4 font-medium transition-colors ${activeTab === 'posts'
-              ? 'text-(--color-primary) border-b-2 border-(--color-primary)'
-              : 'text-(--color-text-muted) hover:text-(--color-text-primary)'
-              }`}
-          >
-            <Grid className="w-5 h-5" />
-            Posts
-          </button>
+        {/* Tabs */}
+        <div className="flex gap-1 mt-2 border-t border-(--color-border) pt-1 overflow-x-auto">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-3 font-medium rounded-lg transition whitespace-nowrap ${activeTab === tab.id
+                ? 'text-(--color-primary) border-b-2 border-(--color-primary)'
+                : 'text-(--color-text-muted) hover:bg-(--color-bg)'
+                }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Posts Grid */}
-      <div className="space-y-4">
-        {!profile.is_accessible ? (
-          <div className="card p-12 text-center">
-            <Lock className="w-16 h-16 mx-auto text-(--color-text-muted) mb-4" />
-            <h3 className="text-xl font-semibold text-(--color-text-primary) mb-2">
-              This Account is Private
-            </h3>
-            <p className="text-(--color-text-muted)">
-              Follow this account to see their photos and posts.
-            </p>
-          </div>
-        ) : posts.length === 0 ? (
-          <div className="card p-12 text-center">
-            <p className="text-(--color-text-muted)">
-              {isOwner ? "You haven't posted anything yet." : "No posts yet."}
-            </p>
-          </div>
-        ) : (
-          posts.map((post) => <Post key={post.id} post={post} />)
-        )}
-      </div>
+      {/* Content Area */}
+      <div className="flex flex-col lg:flex-row gap-4 p-4">
+        {/* Left Sidebar */}
+        <div className="w-full lg:w-[360px] space-y-4 shrink-0">
+          {/* Intro Card */}
+          <div className="card p-4">
+            <h3 className="text-xl font-bold text-(--color-text-primary) mb-4">Intro</h3>
 
-      {/* Followers/Following Modal */}
-      {followModal.show && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="card w-full max-w-md max-h-[80vh] flex flex-col overflow-hidden shadow-2xl">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-4 border-b border-(--color-border)">
-              <h3 className="text-lg font-bold text-(--color-text-primary)">
-                {followModal.title}
-              </h3>
-              <button
-                onClick={() => setFollowModal({ ...followModal, show: false })}
-                className="p-1 rounded-full hover:bg-(--color-border) transition-colors"
-              >
-                <X className="w-5 h-5 text-(--color-text-muted)" />
-              </button>
-            </div>
+            {profile.bio && (
+              <p className="text-center text-(--color-text-secondary) mb-4">{profile.bio}</p>
+            )}
 
-            {/* Modal Content */}
-            <div className="flex-1 overflow-y-auto p-2">
-              {followModal.loading ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="w-8 h-8 text-(--color-primary) animate-spin" />
+            <div className="space-y-3">
+              {profile.workplace && (
+                <div className="flex items-center gap-3 text-(--color-text-secondary)">
+                  <Briefcase className="w-5 h-5 text-(--color-text-muted)" />
+                  <span>Works at <strong>{profile.workplace}</strong></span>
                 </div>
-              ) : followModal.users.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-(--color-text-muted)">
-                    No {followModal.type} found
-                  </p>
+              )}
+              {profile.education && (
+                <div className="flex items-center gap-3 text-(--color-text-secondary)">
+                  <GraduationCap className="w-5 h-5 text-(--color-text-muted)" />
+                  <span>Studied at <strong>{profile.education}</strong></span>
                 </div>
-              ) : (
-                <div className="divide-y divide-(--color-border)">
-                  {followModal.users.map((user) => (
-                    <div key={user.id} className="flex items-center justify-between p-3">
-                      <div
-                        className="flex items-center gap-3 cursor-pointer group"
-                        onClick={() => {
-                          setFollowModal({ ...followModal, show: false })
-                          navigate(`/profile/${user.username}`)
-                        }}
-                      >
-                        <img
-                          src={user.avatar_url || `https://ui-avatars.com/api/?name=${user.username}&background=4F46E5&color=fff`}
-                          alt={user.username}
-                          className="w-10 h-10 rounded-full avatar group-hover:ring-2 ring-(--color-primary) transition-all"
-                        />
-                        <div className="min-w-0">
-                          <p className="font-semibold text-(--color-text-primary) truncate">
-                            {user.display_name || user.username}
-                          </p>
-                          <p className="text-xs text-(--color-text-muted) truncate">
-                            @{user.username}
-                          </p>
-                        </div>
-                      </div>
-
-                      {currentUser?.id !== user.id && (
-                        <RelationshipButton
-                          userId={user.id}
-                          status={user.relationship_status || (user.is_following ? 'following' : 'none')}
-                        />
-                      )}
-                    </div>
-                  ))}
+              )}
+              {profile.location && (
+                <div className="flex items-center gap-3 text-(--color-text-secondary)">
+                  <MapPin className="w-5 h-5 text-(--color-text-muted)" />
+                  <span>Lives in <strong>{profile.location}</strong></span>
+                </div>
+              )}
+              {profile.hometown && (
+                <div className="flex items-center gap-3 text-(--color-text-secondary)">
+                  <Home className="w-5 h-5 text-(--color-text-muted)" />
+                  <span>From <strong>{profile.hometown}</strong></span>
+                </div>
+              )}
+              {profile.user_relationship_status && (
+                <div className="flex items-center gap-3 text-(--color-text-secondary)">
+                  <Heart className="w-5 h-5 text-(--color-text-muted)" />
+                  <span>{profile.user_relationship_status}</span>
+                </div>
+              )}
+              {profile.website && (
+                <div className="flex items-center gap-3 text-(--color-text-secondary)">
+                  <Globe className="w-5 h-5 text-(--color-text-muted)" />
+                  <a href={profile.website} target="_blank" rel="noopener noreferrer" className="text-(--color-primary) hover:underline">
+                    {profile.website.replace(/^https?:\/\//, '')}
+                  </a>
                 </div>
               )}
             </div>
+
+            {isOwner && (
+              <button onClick={() => { setActiveTab('about'); setIsEditing(true) }} className="w-full mt-4 btn btn-secondary">
+                Edit details
+              </button>
+            )}
+          </div>
+
+          {/* Photos Card */}
+          <div className="card p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-(--color-text-primary)">Photos</h3>
+              <button onClick={() => setActiveTab('photos')} className="text-(--color-primary) hover:underline text-sm">
+                See all photos
+              </button>
+            </div>
+            {photos.length > 0 ? (
+              <div className="grid grid-cols-3 gap-1 rounded-lg overflow-hidden">
+                {photos.slice(0, 9).map(photo => (
+                  <img key={photo.id} src={photo.url} alt="" className="aspect-square object-cover hover:opacity-90 transition cursor-pointer" />
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-(--color-text-muted) py-4">No photos yet</p>
+            )}
+          </div>
+
+          {/* Friends Card */}
+          <div className="card p-4">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-xl font-bold text-(--color-text-primary)">Friends</h3>
+                <p className="text-sm text-(--color-text-muted)">{friends.total} friends</p>
+              </div>
+              <button onClick={() => setActiveTab('friends')} className="text-(--color-primary) hover:underline text-sm">
+                See all friends
+              </button>
+            </div>
+            {friends.friends.length > 0 ? (
+              <div className="grid grid-cols-3 gap-3">
+                {friends.friends.slice(0, 9).map(friend => (
+                  <div key={friend.id} onClick={() => navigate(`/profile/${friend.username}`)} className="cursor-pointer text-center">
+                    <img
+                      src={friend.avatar_url || `https://ui-avatars.com/api/?name=${friend.username}&size=100`}
+                      alt={friend.username}
+                      className="w-full aspect-square rounded-lg object-cover"
+                    />
+                    <p className="text-xs font-medium text-(--color-text-primary) mt-1 truncate px-1">
+                      {friend.display_name || friend.username}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-(--color-text-muted) py-4">No friends yet</p>
+            )}
           </div>
         </div>
-      )}
+
+        {/* Main Content */}
+        <div className="flex-1 space-y-4">
+          {activeTab === 'posts' && (
+            <>
+              {!profile.is_accessible ? (
+                <div className="card p-12 text-center">
+                  <Lock className="w-16 h-16 mx-auto text-(--color-text-muted) mb-4" />
+                  <h3 className="text-xl font-semibold text-(--color-text-primary) mb-2">This Account is Private</h3>
+                  <p className="text-(--color-text-muted)">Follow this account to see their posts.</p>
+                </div>
+              ) : posts.length === 0 ? (
+                <div className="card p-12 text-center">
+                  <p className="text-(--color-text-muted)">{isOwner ? "You haven't posted anything yet." : "No posts yet."}</p>
+                </div>
+              ) : (
+                posts.map(post => <Post key={post.id} post={post} />)
+              )}
+            </>
+          )}
+
+          {activeTab === 'about' && (
+            <div className="card p-6">
+              <h3 className="text-xl font-bold text-(--color-text-primary) mb-6">About</h3>
+
+              {isEditing && isOwner ? (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-(--color-text-secondary) mb-1">Display Name</label>
+                    <input type="text" value={editForm.display_name} onChange={e => setEditForm({ ...editForm, display_name: e.target.value })} className="input" placeholder="Your name" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-(--color-text-secondary) mb-1">Bio</label>
+                    <textarea value={editForm.bio} onChange={e => setEditForm({ ...editForm, bio: e.target.value })} className="input" rows={3} placeholder="Write something about yourself" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-(--color-text-secondary) mb-1">Workplace</label>
+                    <input type="text" value={editForm.workplace} onChange={e => setEditForm({ ...editForm, workplace: e.target.value })} className="input" placeholder="Where do you work?" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-(--color-text-secondary) mb-1">Education</label>
+                    <input type="text" value={editForm.education} onChange={e => setEditForm({ ...editForm, education: e.target.value })} className="input" placeholder="Where did you study?" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-(--color-text-secondary) mb-1">Current City</label>
+                    <input type="text" value={editForm.location} onChange={e => setEditForm({ ...editForm, location: e.target.value })} className="input" placeholder="Where do you live?" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-(--color-text-secondary) mb-1">Hometown</label>
+                    <input type="text" value={editForm.hometown} onChange={e => setEditForm({ ...editForm, hometown: e.target.value })} className="input" placeholder="Where are you from?" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-(--color-text-secondary) mb-1">Relationship Status</label>
+                    <select value={editForm.relationship_status} onChange={e => setEditForm({ ...editForm, relationship_status: e.target.value })} className="input">
+                      <option value="">Select status</option>
+                      <option value="Single">Single</option>
+                      <option value="In a relationship">In a relationship</option>
+                      <option value="Engaged">Engaged</option>
+                      <option value="Married">Married</option>
+                      <option value="Complicated">It's complicated</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-(--color-text-secondary) mb-1">Website</label>
+                    <input type="url" value={editForm.website} onChange={e => setEditForm({ ...editForm, website: e.target.value })} className="input" placeholder="https://yourwebsite.com" />
+                  </div>
+
+                  <div className="flex gap-2 pt-4">
+                    <button onClick={() => setIsEditing(false)} className="btn btn-outline">Cancel</button>
+                    <button onClick={handleUpdateProfile} className="btn btn-primary">Save changes</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {profile.bio && <p className="text-(--color-text-secondary)">{profile.bio}</p>}
+                  {profile.workplace && <p><Briefcase className="inline w-4 h-4 mr-2" /> Works at {profile.workplace}</p>}
+                  {profile.education && <p><GraduationCap className="inline w-4 h-4 mr-2" /> Studied at {profile.education}</p>}
+                  {profile.location && <p><MapPin className="inline w-4 h-4 mr-2" /> Lives in {profile.location}</p>}
+                  {profile.hometown && <p><Home className="inline w-4 h-4 mr-2" /> From {profile.hometown}</p>}
+                  {profile.user_relationship_status && <p><Heart className="inline w-4 h-4 mr-2" /> {profile.user_relationship_status}</p>}
+                  {profile.website && <p><Globe className="inline w-4 h-4 mr-2" /> <a href={profile.website} className="text-(--color-primary)">{profile.website}</a></p>}
+
+                  {isOwner && <button onClick={() => setIsEditing(true)} className="btn btn-secondary mt-4">Edit details</button>}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'friends' && (
+            <div className="card p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-(--color-text-primary)">Friends</h3>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Search"
+                    className="px-3 py-1.5 text-sm bg-(--color-bg) rounded-full border border-(--color-border) focus:outline-none focus:ring-2 focus:ring-(--color-primary)"
+                  />
+                </div>
+              </div>
+
+              {friends.friends.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {friends.friends.map(friend => (
+                    <div
+                      key={friend.id}
+                      className="flex items-center gap-3 p-3 rounded-xl border border-(--color-border) hover:bg-(--color-bg) transition cursor-pointer"
+                    >
+                      <img
+                        src={friend.avatar_url || `https://ui-avatars.com/api/?name=${friend.username}&size=80`}
+                        alt={friend.username}
+                        className="w-20 h-20 rounded-xl object-cover shrink-0"
+                        onClick={() => navigate(`/profile/${friend.username}`)}
+                      />
+                      <div className="flex-1 min-w-0" onClick={() => navigate(`/profile/${friend.username}`)}>
+                        <p className="font-semibold text-(--color-text-primary) truncate">
+                          {friend.display_name || friend.username}
+                        </p>
+                        <p className="text-sm text-(--color-text-muted)">
+                          {Math.floor(Math.random() * 50) + 1} mutual friends
+                        </p>
+                      </div>
+                      <button className="p-2 hover:bg-(--color-border) rounded-full transition shrink-0">
+                        <MoreHorizontal className="w-5 h-5 text-(--color-text-muted)" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center text-(--color-text-muted) py-8">No friends yet</p>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'photos' && (
+            <div className="card p-6">
+              <h3 className="text-xl font-bold text-(--color-text-primary) mb-4">Photos</h3>
+              {photos.length > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {photos.map(photo => (
+                    <img key={photo.id} src={photo.url} alt="" className="aspect-square object-cover rounded-lg hover:opacity-90 transition cursor-pointer" />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center text-(--color-text-muted) py-8">No photos yet</p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
