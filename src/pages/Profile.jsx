@@ -518,7 +518,7 @@ export default function Profile() {
           )}
 
           {activeTab === 'friends' && (
-            <div className="card p-6">
+            <div className="card p-3">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-xl font-bold text-(--color-text-primary)">Friends</h3>
                 <div className="flex gap-2">
