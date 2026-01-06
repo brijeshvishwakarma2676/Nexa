@@ -9,6 +9,7 @@ import { useFeedStore } from '../stores/feedStore'
 import { useAuthStore } from '../stores/authStore'
 import api from '../services/api'
 import Comments from './Comments'
+import PostModal from './PostModal'
 
 const MAX_CONTENT_LENGTH = 200
 
@@ -28,6 +29,7 @@ export default function Post({ post }) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [currentStatus, setCurrentStatus] = useState(post.relationship_status || 'none')
   const [isSharing, setIsSharing] = useState(false)
+  const [showModal, setShowModal] = useState(false)
 
   const isOwner = user?.id === post.author.id
   const shouldTruncate = post.content?.length > MAX_CONTENT_LENGTH && !isExpanded
@@ -202,11 +204,11 @@ export default function Post({ post }) {
 
       {/* Image */}
       {post.image_url && (
-        <div className="border-t border-(--color-border)">
+        <div className="border-t border-(--color-border) cursor-pointer" onClick={() => setShowModal(true)}>
           <img
             src={post.image_url}
             alt="Post image"
-            className="w-full max-h-[600px] object-cover"
+            className="w-full max-h-[600px] object-cover hover:opacity-95 transition-opacity"
           />
         </div>
       )}
@@ -280,6 +282,11 @@ export default function Post({ post }) {
 
       {/* Comments section */}
       {showComments && <Comments postId={post.id} />}
+
+      {/* Post Modal */}
+      {showModal && (
+        <PostModal post={post} onClose={() => setShowModal(false)} />
+      )}
     </article>
   )
 }

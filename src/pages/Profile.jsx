@@ -9,6 +9,7 @@ import { useAuthStore } from '../stores/authStore'
 import { useChatStore } from '../stores/chatStore'
 import api from '../services/api'
 import Post from '../components/Post'
+import PostModal from '../components/PostModal'
 import toast from 'react-hot-toast'
 
 export default function Profile() {
@@ -27,6 +28,7 @@ export default function Profile() {
   const [isFollowLoading, setIsFollowLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('posts')
   const [isEditing, setIsEditing] = useState(false)
+  const [selectedPhoto, setSelectedPhoto] = useState(null)
   const [editForm, setEditForm] = useState({
     display_name: '', bio: '', is_private: false,
     workplace: '', education: '', location: '', hometown: '',
@@ -316,12 +318,12 @@ export default function Profile() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 mt-2 border-t border-(--color-border) pt-1 overflow-x-auto">
+        <div className="flex gap-1 mt-2 border-t border-(--color-border) pt-1 overflow-x-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           {tabs.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-3 font-medium rounded-lg transition whitespace-nowrap ${activeTab === tab.id
+              className={`px-2 py-2 md:px-4 md:py-3 text-sm md:text-base font-medium rounded-lg transition whitespace-nowrap ${activeTab === tab.id
                 ? 'text-(--color-primary) border-b-2 border-(--color-primary)'
                 : 'text-(--color-text-muted) hover:bg-(--color-bg)'
                 }`}
@@ -631,18 +633,17 @@ export default function Profile() {
           )}
 
           {activeTab === 'following' && (
-            <div className="card p-3">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-bold text-(--color-text-primary)">Following</h3>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Search"
-                    value={followingSearch}
-                    onChange={(e) => setFollowingSearch(e.target.value)}
-                    className="px-3 py-1.5 text-sm bg-(--color-bg) rounded-full border border-(--color-border) focus:outline-none focus:ring-2 focus:ring-(--color-primary)"
-                  />
-                </div>
+            <div className="card p-4 md:p-4">
+              {/* Header - stacks on mobile */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                <h3 className="text-lg md:text-xl font-bold text-(--color-text-primary)">Following</h3>
+                <input
+                  type="text"
+                  placeholder="Search"
+                  value={followingSearch}
+                  onChange={(e) => setFollowingSearch(e.target.value)}
+                  className="w-full sm:w-auto px-3 py-1.5 text-sm bg-(--color-bg) rounded-full border border-(--color-border) focus:outline-none focus:ring-2 focus:ring-(--color-primary)"
+                />
               </div>
 
               {(() => {
@@ -656,12 +657,12 @@ export default function Profile() {
                     {filteredFollowing.map(user => (
                       <div
                         key={user.id}
-                        className="flex items-center gap-3 p-3 rounded-xl border border-(--color-border) hover:bg-(--color-bg) transition cursor-pointer"
+                        className="flex items-center gap-2 md:gap-3 p-2 md:p-3 rounded-xl border border-(--color-border) hover:bg-(--color-bg) transition cursor-pointer"
                       >
                         <img
                           src={user.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.display_name || user.username)}&size=80&background=4F46E5&color=fff`}
                           alt={user.username}
-                          className="w-20 h-20 rounded-xl object-cover shrink-0"
+                          className="w-12 h-12 md:w-16 md:h-16 rounded-xl object-cover shrink-0"
                           referrerPolicy="no-referrer"
                           onClick={() => navigate(`/profile/${user.username}`)}
                           onError={(e) => {
@@ -669,21 +670,21 @@ export default function Profile() {
                           }}
                         />
                         <div className="flex-1 min-w-0" onClick={() => navigate(`/profile/${user.username}`)}>
-                          <p className="font-semibold text-(--color-text-primary) truncate">
+                          <p className="font-semibold text-sm md:text-base text-(--color-text-primary) truncate">
                             {user.display_name || user.username}
                           </p>
-                          <p className="text-sm text-(--color-text-muted)">
+                          <p className="text-xs md:text-sm text-(--color-text-muted) truncate">
                             @{user.username}
                           </p>
                         </div>
-                        <button className="p-2 hover:bg-(--color-border) rounded-full transition shrink-0">
-                          <MoreHorizontal className="w-5 h-5 text-(--color-text-muted)" />
+                        <button className="p-1.5 md:p-2 hover:bg-(--color-border) rounded-full transition shrink-0">
+                          <MoreHorizontal className="w-4 h-4 md:w-5 md:h-5 text-(--color-text-muted)" />
                         </button>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-center text-(--color-text-muted) py-8">
+                  <p className="text-center text-(--color-text-muted) py-6 md:py-8 text-sm md:text-base">
                     {followingSearch ? 'No matching users found' : 'Not following anyone yet'}
                   </p>
                 )
@@ -697,7 +698,13 @@ export default function Profile() {
               {photos.length > 0 ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                   {photos.map(photo => (
-                    <img key={photo.id} src={photo.url} alt="" className="aspect-square object-cover rounded-lg hover:opacity-90 transition cursor-pointer" />
+                    <img
+                      key={photo.id}
+                      src={photo.url}
+                      alt=""
+                      className="aspect-square object-cover rounded-lg hover:opacity-90 transition cursor-pointer"
+                      onClick={() => setSelectedPhoto(photo)}
+                    />
                   ))}
                 </div>
               ) : (
@@ -707,6 +714,29 @@ export default function Profile() {
           )}
         </div>
       </div>
+
+      {/* Photo Modal */}
+      {selectedPhoto && (
+        <PostModal
+          post={{
+            id: selectedPhoto.post_id || selectedPhoto.id,
+            author: {
+              id: profile.id,
+              username: profile.username,
+              display_name: profile.display_name,
+              avatar_url: profile.avatar_url
+            },
+            content: '',
+            image_url: selectedPhoto.url,
+            created_at: selectedPhoto.created_at || new Date().toISOString(),
+            likes_count: 0,
+            comments_count: 0,
+            is_liked: false,
+            visibility: 'public'
+          }}
+          onClose={() => setSelectedPhoto(null)}
+        />
+      )}
     </div>
   )
 }
