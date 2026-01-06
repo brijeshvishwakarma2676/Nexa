@@ -4,21 +4,33 @@ import api from '../services/api'
 export const useAuthStore = create((set, get) => ({
   user: null,
   isAuthenticated: false,
+  isInitialized: false,  // Tracks if auth check has completed
   isLoading: false,
   error: null,
 
   // Check if user is authenticated on app load
-  checkAuth: () => {
+  checkAuth: async () => {
     const token = localStorage.getItem('access_token')
-    const userStr = localStorage.getItem('user')
+    const refreshToken = localStorage.getItem('refresh_token')
 
-    if (token && userStr) {
-      try {
-        const user = JSON.parse(userStr)
-        set({ user, isAuthenticated: true })
-      } catch {
-        set({ user: null, isAuthenticated: false })
-      }
+    // No tokens at all - not authenticated
+    if (!token && !refreshToken) {
+      set({ user: null, isAuthenticated: false, isInitialized: true })
+      return
+    }
+
+    // Try to validate with server (interceptor will auto-refresh if needed)
+    try {
+      const response = await api.get('/auth/me')
+      const user = response.data
+      localStorage.setItem('user', JSON.stringify(user))
+      set({ user, isAuthenticated: true, isInitialized: true })
+    } catch (error) {
+      // Refresh failed or user doesn't exist - clear everything
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      localStorage.removeItem('user')
+      set({ user: null, isAuthenticated: false, isInitialized: true })
     }
   },
 

@@ -8,15 +8,27 @@ import Profile from './pages/Profile'
 import Chat from './pages/Chat'
 import FollowRequests from './pages/FollowRequests'
 import FindUsers from './pages/FindUsers'
+import Users from './pages/Users'
 import { useEffect } from 'react'
+
+import { Loader2 } from 'lucide-react'
 
 // Protected route wrapper
 function ProtectedRoute({ children }) {
-  const { isAuthenticated, checkAuth } = useAuthStore()
+  const { isAuthenticated, isInitialized, checkAuth } = useAuthStore()
 
   useEffect(() => {
     checkAuth()
   }, [checkAuth])
+
+  // Wait for auth check to complete before deciding
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-(--color-bg)">
+        <Loader2 className="w-10 h-10 text-(--color-primary) animate-spin" />
+      </div>
+    )
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
@@ -64,6 +76,7 @@ function App() {
           <Route path="chat/:conversationId" element={<Chat />} />
           <Route path="requests" element={<FollowRequests />} />
           <Route path="search" element={<FindUsers />} />
+          <Route path="users" element={<Users />} />
         </Route>
 
         {/* Catch all */}

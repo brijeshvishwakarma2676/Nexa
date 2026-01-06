@@ -37,7 +37,7 @@ export default function Navbar() {
   const navItems = [
     { icon: Home, path: '/', label: 'Home' },
     { icon: Play, path: '/videos', label: 'Video' },
-    { icon: Users, path: '/groups', label: 'Groups' },
+    { icon: Users, path: '/users', label: 'Users' },
     { icon: MessageCircle, path: '/chat', label: 'Chat' },
     { icon: UserPlus, path: '/requests', label: 'Requests' },
   ]
