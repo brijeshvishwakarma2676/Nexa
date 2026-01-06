@@ -6,6 +6,13 @@ import { useAuthStore } from '../stores/authStore'
 import { useFeedStore } from '../stores/feedStore'
 import api from '../services/api'
 
+// Format time without "about" prefix
+const formatTimeAgo = (date) => {
+  return formatDistanceToNow(new Date(date), { addSuffix: true })
+    .replace('about ', '')
+    .replace('less than ', '')
+}
+
 export default function Comments({ postId }) {
   const { user } = useAuthStore()
   const { updatePost } = useFeedStore()
@@ -120,7 +127,7 @@ export default function Comments({ postId }) {
                   </p>
                 </div>
                 <p className="text-xs text-(--color-text-muted) mt-1 ml-4">
-                  {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
+                  {formatTimeAgo(comment.created_at)}
                 </p>
               </div>
             </div>

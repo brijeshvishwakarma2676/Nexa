@@ -21,6 +21,8 @@ export default function Profile() {
   const [posts, setPosts] = useState([])
   const [photos, setPhotos] = useState([])
   const [friends, setFriends] = useState({ friends: [], total: 0 })
+  const [following, setFollowing] = useState({ following: [], total: 0 })
+  const [followingSearch, setFollowingSearch] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isFollowLoading, setIsFollowLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('posts')
@@ -38,6 +40,7 @@ export default function Profile() {
     { id: 'posts', label: 'Posts' },
     { id: 'about', label: 'About' },
     { id: 'friends', label: 'Friends' },
+    { id: 'following', label: 'Following' },
     { id: 'photos', label: 'Photos' },
   ]
 
@@ -66,13 +69,17 @@ export default function Profile() {
           .catch(() => ({ data: { posts: [] } }))
         setPosts(postsRes.data.posts || [])
 
-        // Fetch photos and friends
-        const [photosRes, friendsRes] = await Promise.all([
+        // Fetch photos, friends, and following
+        const [photosRes, friendsRes, followingRes] = await Promise.all([
           api.get(`/users/${profileRes.data.id}/photos`).catch(() => ({ data: { photos: [] } })),
-          api.get(`/users/${profileRes.data.id}/friends`).catch(() => ({ data: { friends: [], total: 0 } }))
+          api.get(`/users/${profileRes.data.id}/friends`).catch(() => ({ data: { friends: [], total: 0 } })),
+          api.get(`/users/${profileRes.data.id}/following`).catch(() => ({ data: [] }))
         ])
         setPhotos(photosRes.data.photos || [])
         setFriends(friendsRes.data)
+        // Following API returns a plain array, not an object
+        const followingList = Array.isArray(followingRes.data) ? followingRes.data : []
+        setFollowing({ following: followingList, total: followingList.length })
 
       } catch (error) {
         console.error('Failed to load profile:', error)
@@ -231,9 +238,12 @@ export default function Profile() {
           {/* Avatar */}
           <div className="relative -mt-20 md:-mt-24 shrink-0">
             <img
-              src={profile.avatar_url || `https://ui-avatars.com/api/?name=${profile.username}&background=4F46E5&color=fff&size=168`}
+              src={profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.display_name || profile.username)}&background=4F46E5&color=fff&size=168`}
               alt={profile.username}
               className="w-36 h-36 md:w-44 md:h-44 rounded-full border-4 border-white shadow-lg object-cover bg-white"
+              onError={(e) => {
+                e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.display_name || profile.username)}&background=4F46E5&color=fff&size=168`
+              }}
             />
             {isOwner && (
               <label className="absolute bottom-2 right-2 p-2 bg-(--color-bg) rounded-full shadow cursor-pointer hover:bg-gray-200 transition">
@@ -250,7 +260,7 @@ export default function Profile() {
               {profile.is_private && <Lock className="w-5 h-5 text-(--color-text-muted)" />}
             </h1>
             <p className="text-(--color-text-muted) mb-2">
-              {friends.total} friends · {profile.followers_count ?? 0} followers
+              {friends.total} friends · {profile.followers_count ?? 0} followers · {following.total} following
             </p>
 
             {/* Friend avatars preview */}
@@ -259,9 +269,12 @@ export default function Profile() {
                 {friends.friends.slice(0, 8).map(f => (
                   <img
                     key={f.id}
-                    src={f.avatar_url || `https://ui-avatars.com/api/?name=${f.username}&size=32`}
+                    src={f.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(f.display_name || f.username)}&size=32&background=4F46E5&color=fff`}
                     alt={f.username}
-                    className="w-8 h-8 rounded-full border-2 border-white"
+                    className="w-8 h-8 rounded-full border-2 border-white object-cover"
+                    onError={(e) => {
+                      e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(f.display_name || f.username)}&size=32&background=4F46E5&color=fff`
+                    }}
                   />
                 ))}
               </div>
@@ -372,6 +385,11 @@ export default function Profile() {
               )}
             </div>
 
+            {/* Empty state when no intro details */}
+            {!profile.bio && !profile.workplace && !profile.education && !profile.location && !profile.hometown && !profile.user_relationship_status && !profile.website && (
+              <p className="text-center text-(--color-text-muted) py-4">No intro added yet</p>
+            )}
+
             {isOwner && (
               <button onClick={() => { setActiveTab('about'); setIsEditing(true) }} className="w-full mt-4 btn btn-secondary">
                 Edit details
@@ -411,21 +429,70 @@ export default function Profile() {
             </div>
             {friends.friends.length > 0 ? (
               <div className="grid grid-cols-3 gap-3">
-                {friends.friends.slice(0, 9).map(friend => (
-                  <div key={friend.id} onClick={() => navigate(`/profile/${friend.username}`)} className="cursor-pointer text-center">
-                    <img
-                      src={friend.avatar_url || `https://ui-avatars.com/api/?name=${friend.username}&size=100`}
-                      alt={friend.username}
-                      className="w-full aspect-square rounded-lg object-cover"
-                    />
-                    <p className="text-xs font-medium text-(--color-text-primary) mt-1 truncate px-1">
-                      {friend.display_name || friend.username}
-                    </p>
-                  </div>
-                ))}
+                {friends.friends.slice(0, 9).map(friend => {
+                  const avatarUrl = friend.avatar_url && friend.avatar_url.trim() !== ''
+                    ? friend.avatar_url
+                    : `https://ui-avatars.com/api/?name=${encodeURIComponent(friend.display_name || friend.username)}&size=100&background=4F46E5&color=fff`
+                  return (
+                    <div key={friend.id} onClick={() => navigate(`/profile/${friend.username}`)} className="cursor-pointer text-center">
+                      <img
+                        src={avatarUrl}
+                        alt={friend.username}
+                        className="w-full aspect-square rounded-lg object-cover bg-(--color-bg)"
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(friend.display_name || friend.username)}&size=100&background=4F46E5&color=fff`
+                        }}
+                      />
+                      <p className="text-xs font-medium text-(--color-text-primary) mt-1 truncate px-1">
+                        {friend.display_name || friend.username}
+                      </p>
+                    </div>
+                  )
+                })}
               </div>
             ) : (
               <p className="text-center text-(--color-text-muted) py-4">No friends yet</p>
+            )}
+          </div>
+
+          {/* Following Card */}
+          <div className="card p-4">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-xl font-bold text-(--color-text-primary)">Following</h3>
+                <p className="text-sm text-(--color-text-muted)">{following.total || 0} following</p>
+              </div>
+              <button onClick={() => setActiveTab('following')} className="text-(--color-primary) hover:underline text-sm">
+                See all
+              </button>
+            </div>
+            {(following.following || []).length > 0 ? (
+              <div className="grid grid-cols-3 gap-3">
+                {(following.following || []).slice(0, 9).map(user => {
+                  const avatarUrl = user.avatar_url && user.avatar_url.trim() !== ''
+                    ? user.avatar_url
+                    : `https://ui-avatars.com/api/?name=${encodeURIComponent(user.display_name || user.username)}&size=100&background=4F46E5&color=fff`
+                  return (
+                    <div key={user.id} onClick={() => navigate(`/profile/${user.username}`)} className="cursor-pointer text-center">
+                      <img
+                        src={avatarUrl}
+                        alt={user.username}
+                        className="w-full aspect-square rounded-lg object-cover bg-(--color-bg)"
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.display_name || user.username)}&size=100&background=4F46E5&color=fff`
+                        }}
+                      />
+                      <p className="text-xs font-medium text-(--color-text-primary) mt-1 truncate px-1">
+                        {user.display_name || user.username}
+                      </p>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <p className="text-center text-(--color-text-muted) py-4">Not following anyone yet</p>
             )}
           </div>
         </div>
@@ -560,6 +627,67 @@ export default function Profile() {
               ) : (
                 <p className="text-center text-(--color-text-muted) py-8">No friends yet</p>
               )}
+            </div>
+          )}
+
+          {activeTab === 'following' && (
+            <div className="card p-3">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-(--color-text-primary)">Following</h3>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Search"
+                    value={followingSearch}
+                    onChange={(e) => setFollowingSearch(e.target.value)}
+                    className="px-3 py-1.5 text-sm bg-(--color-bg) rounded-full border border-(--color-border) focus:outline-none focus:ring-2 focus:ring-(--color-primary)"
+                  />
+                </div>
+              </div>
+
+              {(() => {
+                const filteredFollowing = (following.following || []).filter(user =>
+                  !followingSearch ||
+                  user.display_name?.toLowerCase().includes(followingSearch.toLowerCase()) ||
+                  user.username.toLowerCase().includes(followingSearch.toLowerCase())
+                )
+                return filteredFollowing.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {filteredFollowing.map(user => (
+                      <div
+                        key={user.id}
+                        className="flex items-center gap-3 p-3 rounded-xl border border-(--color-border) hover:bg-(--color-bg) transition cursor-pointer"
+                      >
+                        <img
+                          src={user.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.display_name || user.username)}&size=80&background=4F46E5&color=fff`}
+                          alt={user.username}
+                          className="w-20 h-20 rounded-xl object-cover shrink-0"
+                          referrerPolicy="no-referrer"
+                          onClick={() => navigate(`/profile/${user.username}`)}
+                          onError={(e) => {
+                            e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.display_name || user.username)}&size=80&background=4F46E5&color=fff`
+                          }}
+                        />
+                        <div className="flex-1 min-w-0" onClick={() => navigate(`/profile/${user.username}`)}>
+                          <p className="font-semibold text-(--color-text-primary) truncate">
+                            {user.display_name || user.username}
+                          </p>
+                          <p className="text-sm text-(--color-text-muted)">
+                            @{user.username}
+                          </p>
+                        </div>
+                        <button className="p-2 hover:bg-(--color-border) rounded-full transition shrink-0">
+                          <MoreHorizontal className="w-5 h-5 text-(--color-text-muted)" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-center text-(--color-text-muted) py-8">
+                    {followingSearch ? 'No matching users found' : 'Not following anyone yet'}
+                  </p>
+                )
+              })()}
             </div>
           )}
 

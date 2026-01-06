@@ -12,6 +12,13 @@ import Comments from './Comments'
 
 const MAX_CONTENT_LENGTH = 200
 
+// Format time without "about" prefix
+const formatTimeAgo = (date) => {
+  return formatDistanceToNow(new Date(date), { addSuffix: true })
+    .replace('about ', '')
+    .replace('less than ', '')
+}
+
 export default function Post({ post }) {
   const { user } = useAuthStore()
   const { toggleLike, removePost, sharePost } = useFeedStore()
@@ -114,7 +121,7 @@ export default function Post({ post }) {
               )}
             </div>
             <div className="flex items-center gap-1 text-xs text-(--color-text-muted)">
-              <span>{formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}</span>
+              <span>{formatTimeAgo(post.created_at)}</span>
               <span>·</span>
               {post.visibility === 'public' ? (
                 <Globe className="w-3 h-3" title="Public" />
