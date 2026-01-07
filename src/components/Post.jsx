@@ -24,6 +24,9 @@ export default function Post({ post }) {
   const { user } = useAuthStore()
   const { toggleLike, removePost, sharePost } = useFeedStore()
 
+  // Local state for optimistic UI updates
+  const [isLiked, setIsLiked] = useState(post.is_liked)
+  const [likesCount, setLikesCount] = useState(post.likes_count)
   const [showComments, setShowComments] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
@@ -37,8 +40,28 @@ export default function Post({ post }) {
     ? post.content.slice(0, MAX_CONTENT_LENGTH) + '...'
     : post.content
 
-  const handleLike = () => {
-    toggleLike(post.id)
+  const handleLike = async () => {
+    // Optimistic UI update
+    const wasLiked = isLiked
+    setIsLiked(!wasLiked)
+    setLikesCount(prev => wasLiked ? prev - 1 : prev + 1)
+
+    try {
+      // Make API call directly
+      if (wasLiked) {
+        await api.delete(`/posts/${post.id}/like`)
+      } else {
+        await api.post(`/posts/${post.id}/like`)
+      }
+
+      // Also update store if post exists there (for Feed page)
+      toggleLike(post.id)
+    } catch (error) {
+      // Revert on error
+      console.error('Failed to toggle like:', error)
+      setIsLiked(wasLiked)
+      setLikesCount(prev => wasLiked ? prev + 1 : prev - 1)
+    }
   }
 
   const handleFollow = async () => {
@@ -217,13 +240,13 @@ export default function Post({ post }) {
       <div className="px-4 py-2 flex items-center justify-between text-sm text-(--color-text-muted)">
         {/* Reactions */}
         <div className="flex items-center gap-1">
-          {post.likes_count > 0 && (
+          {likesCount > 0 && (
             <>
               <div className="flex -space-x-1">
                 <span className="w-[18px] h-[18px] rounded-full bg-blue-500 flex items-center justify-center text-[10px]">👍</span>
                 <span className="w-[18px] h-[18px] rounded-full bg-red-500 flex items-center justify-center text-[10px]">❤️</span>
               </div>
-              <span className="ml-1">{formatCount(post.likes_count)}</span>
+              <span className="ml-1">{formatCount(likesCount)}</span>
             </>
           )}
         </div>
@@ -248,13 +271,13 @@ export default function Post({ post }) {
       <div className="px-3 py-1 border-t border-(--color-border) flex">
         <button
           onClick={handleLike}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg transition-colors font-medium ${post.is_liked
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg transition-colors font-medium ${isLiked
             ? 'text-(--color-primary)'
             : 'text-(--color-text-secondary) hover:bg-(--color-bg)'
             }`}
         >
           <ThumbsUp
-            className={`w-5 h-5 ${post.is_liked ? 'fill-current' : ''}`}
+            className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`}
           />
           <span>Like</span>
         </button>
