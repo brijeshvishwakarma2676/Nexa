@@ -9,6 +9,7 @@ import Chat from './pages/Chat'
 import FollowRequests from './pages/FollowRequests'
 import FindUsers from './pages/FindUsers'
 import Users from './pages/Users'
+import Notifications from './pages/Notifications'
 import { useEffect } from 'react'
 
 import { Loader2 } from 'lucide-react'
@@ -90,6 +91,7 @@ function App() {
           <Route path="requests" element={<FollowRequests />} />
           <Route path="search" element={<FindUsers />} />
           <Route path="users" element={<Users />} />
+          <Route path="notifications" element={<Notifications />} />
         </Route>
 
         {/* Catch all */}

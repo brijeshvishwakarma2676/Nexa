@@ -39,7 +39,7 @@ export default function Navbar() {
     { icon: Play, path: '/videos', label: 'Video' },
     { icon: Users, path: '/users', label: 'Users' },
     { icon: MessageCircle, path: '/chat', label: 'Chat' },
-    { icon: UserPlus, path: '/requests', label: '                                                                                                                                                                                                                             ' },
+    { icon: UserPlus, path: '/requests', label: 'Requests' },
   ]
 
   // Close dropdowns on outside click
@@ -265,31 +265,42 @@ export default function Navbar() {
                     No notifications yet
                   </p>
                 ) : (
-                  notifications.map((notification) => (
-                    <button
-                      key={notification.id}
-                      onClick={() => handleNotificationClick(notification)}
-                      className={`w-full flex items-start gap-3 px-4 py-3 hover:bg-(--color-bg) transition-colors text-left ${!notification.read ? 'bg-(--color-primary-light)' : ''
-                        }`}
+                  <>
+                    {notifications.slice(0, 4).map((notification) => (
+                      <button
+                        key={notification.id}
+                        onClick={() => handleNotificationClick(notification)}
+                        className={`w-full flex items-start gap-3 px-4 py-3 hover:bg-(--color-bg) transition-colors text-left ${!notification.read ? 'bg-(--color-primary-light)' : ''
+                          }`}
+                      >
+                        <img
+                          src={notification.actor.avatar_url || `https://ui-avatars.com/api/?name=${notification.actor.username}&background=4F46E5&color=fff`}
+                          alt={notification.actor.username}
+                          className="w-10 h-10 rounded-full flex-shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-(--color-text-primary)">
+                            {notification.message}
+                          </p>
+                          <p className="text-xs text-(--color-text-muted) mt-1">
+                            {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                          </p>
+                        </div>
+                        {!notification.read && (
+                          <span className="w-3 h-3 rounded-full bg-(--color-primary) flex-shrink-0 mt-2" />
+                        )}
+                      </button>
+                    ))}
+
+                    {/* View All Button */}
+                    <Link
+                      to="/notifications"
+                      onClick={() => setShowNotifications(false)}
+                      className="block w-full px-4 py-3 text-center text-(--color-primary) font-medium hover:bg-(--color-bg) transition-colors border-t border-(--color-border)"
                     >
-                      <img
-                        src={notification.actor.avatar_url || `https://ui-avatars.com/api/?name=${notification.actor.username}&background=4F46E5&color=fff`}
-                        alt={notification.actor.username}
-                        className="w-10 h-10 rounded-full flex-shrink-0"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-(--color-text-primary)">
-                          {notification.message}
-                        </p>
-                        <p className="text-xs text-(--color-text-muted) mt-1">
-                          {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
-                        </p>
-                      </div>
-                      {!notification.read && (
-                        <span className="w-3 h-3 rounded-full bg-(--color-primary) flex-shrink-0 mt-2" />
-                      )}
-                    </button>
-                  ))
+                      View all notifications
+                    </Link>
+                  </>
                 )}
               </div>
             )}
