@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 import Navbar from './Navbar'
 import Sidebar from './Sidebar'
 import MobileNavBar from './MobileNavBar'
+import InstallPrompt from './InstallPrompt'
 import { useChatStore } from '../stores/chatStore'
 import { useNotificationStore } from '../stores/notificationStore'
 import { Toaster } from 'react-hot-toast'
@@ -46,6 +47,9 @@ function Layout() {
 
       {/* Mobile Bottom Navigation */}
       <MobileNavBar />
+
+      {/* PWA Install Prompt */}
+      <InstallPrompt />
     </div>
   )
 }
