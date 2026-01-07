@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom'
 import { useEffect } from 'react'
 import Navbar from './Navbar'
 import Sidebar from './Sidebar'
+import MobileNavBar from './MobileNavBar'
 import { useChatStore } from '../stores/chatStore'
 import { useNotificationStore } from '../stores/notificationStore'
 import { Toaster } from 'react-hot-toast'
@@ -38,10 +39,13 @@ function Layout() {
         {/* <Sidebar /> */}
 
         {/* Main Content */}
-        <main className="flex-1 min-h-[calc(100vh-4rem)] px-4">
+        <main className="flex-1 min-h-[calc(100vh-4rem)] px-4 pb-20 lg:pb-4">
           <Outlet />
         </main>
       </div>
+
+      {/* Mobile Bottom Navigation */}
+      <MobileNavBar />
     </div>
   )
 }

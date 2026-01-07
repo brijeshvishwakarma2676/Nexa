@@ -343,7 +343,7 @@ export default function Profile() {
             <h3 className="text-xl font-bold text-(--color-text-primary) mb-4">Intro</h3>
 
             {profile.bio && (
-              <p className="text-center text-(--color-text-secondary) mb-4">{profile.bio}</p>
+              <p className="text-(--color-text-secondary) mb-4 whitespace-pre-wrap">{profile.bio}</p>
             )}
 
             <div className="space-y-3">
@@ -531,7 +531,7 @@ export default function Profile() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-(--color-text-secondary) mb-1">Bio</label>
-                    <textarea value={editForm.bio} onChange={e => setEditForm({ ...editForm, bio: e.target.value })} className="input" rows={3} placeholder="Write something about yourself" />
+                    <textarea value={editForm.bio} onChange={e => setEditForm({ ...editForm, bio: e.target.value })} className="input" rows={5} placeholder="Write something about yourself" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-(--color-text-secondary) mb-1">Workplace</label>
@@ -572,7 +572,7 @@ export default function Profile() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {profile.bio && <p className="text-(--color-text-secondary)">{profile.bio}</p>}
+                  {profile.bio && <p className="text-(--color-text-secondary) whitespace-pre-wrap">{profile.bio}</p>}
                   {profile.workplace && <p><Briefcase className="inline w-4 h-4 mr-2" /> Works at {profile.workplace}</p>}
                   {profile.education && <p><GraduationCap className="inline w-4 h-4 mr-2" /> Studied at {profile.education}</p>}
                   {profile.location && <p><MapPin className="inline w-4 h-4 mr-2" /> Lives in {profile.location}</p>}

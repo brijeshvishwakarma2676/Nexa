@@ -39,7 +39,7 @@ export default function Navbar() {
     { icon: Play, path: '/videos', label: 'Video' },
     { icon: Users, path: '/users', label: 'Users' },
     { icon: MessageCircle, path: '/chat', label: 'Chat' },
-    { icon: UserPlus, path: '/requests', label: 'Requests' },
+    { icon: UserPlus, path: '/requests', label: '                                                                                                                                                                                                                             ' },
   ]
 
   // Close dropdowns on outside click
