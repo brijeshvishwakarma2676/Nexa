@@ -2,7 +2,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useState, useRef, useEffect } from 'react'
 import {
   Search, Bell, MessageCircle, LogOut, User, Home,
-  Play, Store, Users, Gamepad2, Grid3X3, ArrowLeft, X
+  Play, Store, Users, Gamepad2, Grid3X3, ArrowLeft, X, Loader2
 } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
 import { useNotificationStore } from '../stores/notificationStore'
@@ -16,7 +16,7 @@ export default function Navbar() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, logout } = useAuthStore()
-  const { notifications, unreadCount, fetchNotifications, markAsRead, markAllAsRead } = useNotificationStore()
+  const { notifications, unreadCount, fetchNotifications, markAsRead, markAllAsRead, isLoading: notificationsLoading } = useNotificationStore()
   const { conversations } = useChatStore()
 
   const [searchQuery, setSearchQuery] = useState('')
@@ -260,7 +260,11 @@ export default function Navbar() {
                   )}
                 </div>
 
-                {notifications.length === 0 ? (
+                {notificationsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 text-(--color-primary) animate-spin" />
+                  </div>
+                ) : notifications.length === 0 ? (
                   <p className="px-4 py-8 text-center text-(--color-text-muted)">
                     No notifications yet
                   </p>
