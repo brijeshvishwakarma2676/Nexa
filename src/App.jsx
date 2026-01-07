@@ -39,7 +39,20 @@ function ProtectedRoute({ children }) {
 
 // Public route wrapper (redirect if authenticated)
 function PublicRoute({ children }) {
-  const { isAuthenticated } = useAuthStore()
+  const { isAuthenticated, isInitialized, checkAuth } = useAuthStore()
+
+  useEffect(() => {
+    checkAuth()
+  }, [checkAuth])
+
+  // Wait for auth check to complete before deciding
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-(--color-bg)">
+        <Loader2 className="w-10 h-10 text-(--color-primary) animate-spin" />
+      </div>
+    )
+  }
 
   if (isAuthenticated) {
     return <Navigate to="/" replace />
