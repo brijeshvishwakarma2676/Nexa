@@ -30,28 +30,29 @@ function Layout() {
   }, [connectWebSocket, disconnectWebSocket, fetchUnreadCount])
 
   const isReelsPage = location.pathname === '/reels'
+  const isChatPage = location.pathname.startsWith('/chat')
 
   return (
     <div className="min-h-screen bg-(--color-bg)">
       <Toaster position="top-right" />
-      {/* Top Navigation */}
-      <Navbar />
+      {/* Top Navigation - Always shown except Reels (or as per design) */}
+      {!isReelsPage && <Navbar />}
 
-      <div className="flex mt-3">
-        {/* Left Sidebar - Hidden on mobile, shown on desktop (except for Reels) */}
-        {!isReelsPage && <Sidebar />}
+      <div className={`flex ${!isChatPage && !isReelsPage ? 'mt-3' : ''}`}>
+        {/* Left Sidebar - Hidden on mobile, shown on desktop (except for Reels and Chat) */}
+        {!isReelsPage && !isChatPage && <Sidebar />}
 
         {/* Main Content Area - No padding, each page handles its own spacing */}
-        <main className={`flex-1 min-h-screen ${!isReelsPage ? 'lg:pl-72' : ''}`}>
+        <main className={`flex-1 min-h-screen ${(!isReelsPage && !isChatPage) ? 'lg:pl-72' : ''}`}>
           <Outlet />
         </main>
       </div>
 
-      {/* Mobile Bottom Navigation */}
-      <MobileNavBar />
+      {/* Mobile Bottom Navigation - Visible on chat as requested */}
+      {!isReelsPage && <MobileNavBar />}
 
       {/* PWA Install Prompt */}
-      <InstallPrompt />
+      {!isReelsPage && <InstallPrompt />}
     </div>
   )
 }
