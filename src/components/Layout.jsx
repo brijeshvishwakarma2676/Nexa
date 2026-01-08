@@ -37,7 +37,7 @@ function Layout() {
       {/* Top Navigation */}
       <Navbar />
 
-      <div className="flex">
+      <div className="flex mt-3">
         {/* Left Sidebar - Hidden on mobile, shown on desktop (except for Reels) */}
         {!isReelsPage && <Sidebar />}
 
