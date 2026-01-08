@@ -62,7 +62,7 @@ export const useStoryStore = create((set, get) => ({
   },
 
   // Go to next story
-  nextStory: async () => {
+  nextStory: () => {
     const { storyGroups, currentGroupIndex, currentStoryIndex } = get()
     const currentGroup = storyGroups[currentGroupIndex]
 
@@ -71,12 +71,10 @@ export const useStoryStore = create((set, get) => ({
       return
     }
 
-    // Mark current story as viewed
+    // Mark current story as viewed (in background)
     const currentStory = currentGroup.stories[currentStoryIndex]
     if (currentStory && !currentStory.is_viewed) {
-      try {
-        await api.get(`/stories/${currentStory.id}`)
-        // Update local state
+      api.get(`/stories/${currentStory.id}`).then(() => {
         set((state) => ({
           storyGroups: state.storyGroups.map((group, gi) =>
             gi === currentGroupIndex
@@ -89,9 +87,7 @@ export const useStoryStore = create((set, get) => ({
               : group
           ),
         }))
-      } catch (error) {
-        console.error('Failed to mark story as viewed:', error)
-      }
+      }).catch(err => console.error('Failed to mark story as viewed:', err))
     }
 
     // Check if more stories in current group

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { X, Type, Loader2, ChevronLeft, Image as ImageIcon, Sparkles, Plus, Trash2, Crop } from 'lucide-react'
 import Moveable from 'react-moveable'
-import { toPng } from 'html-to-image'
+import { toJpeg } from 'html-to-image'
 import ReactCrop from 'react-image-crop'
 import 'react-image-crop/dist/ReactCrop.css'
 import { useStoryStore } from '../stores/storyStore'
@@ -11,6 +11,9 @@ import api from '../services/api'
 // ═══════════════════════════════════════════════════════════════════════════════
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════════
+
+const CANVAS_WIDTH = 1080
+const CANVAS_HEIGHT = 1920
 
 const BACKGROUND_GRADIENTS = [
     { id: 1, gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
@@ -42,6 +45,13 @@ export default function CreateStory({ isOpen, onClose }) {
     const [bgType, setBgType] = useState('gradient') // 'gradient' | 'image'
     const [bgGradientIndex, setBgGradientIndex] = useState(0)
     const [bgImageUrl, setBgImageUrl] = useState(null)
+    const [bgTransform, setBgTransform] = useState({
+        translate: [0, 0],
+        rotate: 0,
+        scale: [1, 1],
+        width: CANVAS_WIDTH,
+        height: CANVAS_HEIGHT
+    })
 
     // Layers - both text and images
     const [layers, setLayers] = useState([])
@@ -74,6 +84,13 @@ export default function CreateStory({ isOpen, onClose }) {
             setBgType('gradient')
             setBgGradientIndex(0)
             setBgImageUrl(null)
+            setBgTransform({
+                translate: [0, 0],
+                rotate: 0,
+                scale: [1, 1],
+                width: CANVAS_WIDTH,
+                height: CANVAS_HEIGHT
+            })
             setLayers([])
             setSelectedLayerId(null)
             setEditingLayerId(null)
@@ -91,6 +108,28 @@ export default function CreateStory({ isOpen, onClose }) {
         }
     }, [editingLayerId])
 
+    // Handle Responsive Scaling
+    const [displayScale, setDisplayScale] = useState(0.2)
+    const previewWrapperRef = useRef(null)
+
+    const updateScale = useCallback(() => {
+        if (!previewWrapperRef.current) return
+        const padding = 40
+        const availableWidth = previewWrapperRef.current.offsetWidth - padding
+        const availableHeight = previewWrapperRef.current.offsetHeight - padding
+        
+        const scaleW = availableWidth / CANVAS_WIDTH
+        const scaleH = availableHeight / CANVAS_HEIGHT
+        
+        setDisplayScale(Math.min(scaleW, scaleH))
+    }, [])
+
+    useEffect(() => {
+        updateScale()
+        window.addEventListener('resize', updateScale)
+        return () => window.removeEventListener('resize', updateScale)
+    }, [updateScale, isOpen])
+
     // ─────────────────────────────────────────────────────────────────────────
     // LAYER MANAGEMENT
     // ─────────────────────────────────────────────────────────────────────────
@@ -100,12 +139,12 @@ export default function CreateStory({ isOpen, onClose }) {
             id: Date.now(),
             type: 'text',
             text: '',
-            translate: [0, 0],
+            translate: [CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2],
             rotate: 0,
             scale: [1, 1],
             color: '#FFFFFF',
             fontStyleId: 'bold',
-            fontSize: 28,
+            fontSize: 72, // Scaled for 1080p
         }
         setLayers(prev => [...prev, newLayer])
         setSelectedLayerId(newLayer.id)
@@ -114,11 +153,9 @@ export default function CreateStory({ isOpen, onClose }) {
     }, [])
 
     const addImageLayer = useCallback((dataUrl) => {
-        // Load image to get actual dimensions
         const img = new Image()
         img.onload = () => {
-            // Calculate size to fit nicely in canvas (max 200px on largest side)
-            const maxSize = 200
+            const maxSize = 600 // Scaled for 1080p
             let width = img.width
             let height = img.height
 
@@ -138,7 +175,7 @@ export default function CreateStory({ isOpen, onClose }) {
                 id: Date.now(),
                 type: 'image',
                 imageUrl: dataUrl,
-                translate: [0, 0],
+                translate: [CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2],
                 rotate: 0,
                 scale: [1, 1],
                 width: Math.round(width),
@@ -204,8 +241,8 @@ export default function CreateStory({ isOpen, onClose }) {
         const croppedUrl = canvas.toDataURL('image/png')
         updateLayer(croppingLayerId, {
             imageUrl: croppedUrl,
-            width: Math.min(completedCrop.width, 200),
-            height: Math.min(completedCrop.height, 200),
+            width: completedCrop.width,
+            height: completedCrop.height,
         })
 
         setCroppingLayerId(null)
@@ -213,8 +250,14 @@ export default function CreateStory({ isOpen, onClose }) {
         setCompletedCrop(null)
     }, [croppingLayerId, completedCrop, updateLayer])
 
-    const getTarget = () => document.getElementById(`layer-${selectedLayerId}`)
-    const getSelectedLayer = () => layers.find(l => l.id === selectedLayerId)
+    const getTarget = () => {
+        if (selectedLayerId === 'background') return document.getElementById('layer-background')
+        return document.getElementById(`layer-${selectedLayerId}`)
+    }
+    const getSelectedLayer = () => {
+        if (selectedLayerId === 'background') return { type: 'background' }
+        return layers.find(l => l.id === selectedLayerId)
+    }
     const getFontStyle = (fontStyleId) => FONT_STYLES.find(f => f.id === fontStyleId)?.style || FONT_STYLES[0].style
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -228,8 +271,30 @@ export default function CreateStory({ isOpen, onClose }) {
 
         const reader = new FileReader()
         reader.onload = (event) => {
-            setBgType('image')
-            setBgImageUrl(event.target.result)
+            const img = new Image()
+            img.onload = () => {
+                // Smart Cover Logic:
+                // Find scale that fills the 1080x1920 canvas while maintaining AR
+                const scale = Math.max(CANVAS_WIDTH / img.width, CANVAS_HEIGHT / img.height)
+                const width = img.width * scale
+                const height = img.height * scale
+                
+                // Center it
+                const tx = (CANVAS_WIDTH - width) / 2
+                const ty = (CANVAS_HEIGHT - height) / 2
+
+                setBgType('image')
+                setBgImageUrl(event.target.result)
+                setBgTransform({
+                    translate: [tx, ty],
+                    rotate: 0,
+                    scale: [1, 1],
+                    width: Math.round(width),
+                    height: Math.round(height)
+                })
+                setSelectedLayerId('background')
+            }
+            img.src = event.target.result
         }
         reader.readAsDataURL(file)
         e.target.value = '' // Reset for re-selection
@@ -274,8 +339,14 @@ export default function CreateStory({ isOpen, onClose }) {
             const element = containerRef.current
             if (!element) throw new Error("Capture area not found")
 
-            const dataUrl = await toPng(element, {
-                pixelRatio: 2,
+            const dataUrl = await toJpeg(element, {
+                width: CANVAS_WIDTH,
+                height: CANVAS_HEIGHT,
+                quality: 0.85,
+                style: {
+                    transform: 'scale(1)',
+                    transformOrigin: 'top left'
+                },
                 backgroundColor: '#000000',
                 skipFonts: true,
                 filter: (node) => !node.classList?.contains('moveable-control-box')
@@ -329,272 +400,429 @@ export default function CreateStory({ isOpen, onClose }) {
                 </button>
             </div>
 
-            {/* Editor */}
-            <div className="flex-1 flex items-center justify-center overflow-hidden bg-[#0a0a0a] p-4">
-                {/* Story Canvas */}
-                <div
-                    ref={containerRef}
-                    onClick={() => { setSelectedLayerId(null); setShowColorPicker(false); setShowFontPicker(false); }}
-                    className="relative rounded-xl overflow-hidden shadow-2xl w-full max-w-[360px] mx-auto"
-                    style={{ aspectRatio: '9/16', maxHeight: 'calc(100vh - 200px)' }}
-                >
-                    {/* Background */}
-                    {bgType === 'image' && bgImageUrl ? (
-                        <img src={bgImageUrl} alt="Background" className="w-full h-full object-cover pointer-events-none select-none" />
-                    ) : (
-                        <div className="w-full h-full" style={{ background: BACKGROUND_GRADIENTS[bgGradientIndex].gradient }} />
-                    )}
-
-                    {/* Layers */}
-                    {layers.map(layer => {
-                        if (layer.type === 'text') {
-                            if (!layer.text.trim()) return null
-                            const fontStyle = getFontStyle(layer.fontStyleId)
-                            const isNeon = layer.fontStyleId === 'neon'
-
-                            return (
-                                <div
-                                    key={layer.id}
-                                    id={`layer-${layer.id}`}
-                                    className="absolute top-1/2 left-1/2"
-                                    style={{
-                                        transform: `translate(${layer.translate[0]}px, ${layer.translate[1]}px) rotate(${layer.rotate}deg) scale(${layer.scale[0]}, ${layer.scale[1]})`,
-                                        width: 'max-content',
-                                        maxWidth: '90%',
-                                        cursor: 'move',
-                                        zIndex: selectedLayerId === layer.id ? 20 : 10,
-                                    }}
-                                    onClick={(e) => { e.stopPropagation(); setSelectedLayerId(layer.id); }}
-                                    onDoubleClick={(e) => { e.stopPropagation(); setEditingLayerId(layer.id); setEditText(layer.text); }}
-                                >
-                                    <p
-                                        className="text-center whitespace-pre-wrap select-none px-2"
-                                        style={{
-                                            color: layer.color,
-                                            fontSize: `${layer.fontSize}px`,
-                                            ...fontStyle,
-                                            textShadow: isNeon
-                                                ? `0 0 10px ${layer.color}, 0 0 20px ${layer.color}, 0 0 30px ${layer.color}`
-                                                : '2px 2px 4px rgba(0,0,0,0.8), 0 0 20px rgba(0,0,0,0.5)',
-                                        }}
-                                    >
-                                        {layer.text}
-                                    </p>
-                                </div>
-                            )
-                        }
-
-                        if (layer.type === 'image') {
-                            return (
-                                <div
-                                    key={layer.id}
-                                    id={`layer-${layer.id}`}
-                                    className="absolute top-1/2 left-1/2"
-                                    style={{
-                                        transform: `translate(${layer.translate[0]}px, ${layer.translate[1]}px) rotate(${layer.rotate}deg) scale(${layer.scale[0]}, ${layer.scale[1]})`,
-                                        width: `${layer.width}px`,
-                                        height: `${layer.height}px`,
-                                        cursor: 'move',
-                                        zIndex: selectedLayerId === layer.id ? 20 : 10,
-                                    }}
-                                    onClick={(e) => { e.stopPropagation(); setSelectedLayerId(layer.id); }}
-                                >
-                                    <img
-                                        src={layer.imageUrl}
-                                        alt="Layer"
-                                        className="w-full h-full object-contain rounded-lg shadow-lg select-none pointer-events-none"
-                                        draggable={false}
-                                    />
-                                </div>
-                            )
-                        }
-                        return null
-                    })}
-
-                    {/* Moveable */}
-                    {selectedLayerId && getTarget() && !editingLayerId && !croppingLayerId && (
-                        <Moveable
-                            target={getTarget()}
-                            container={containerRef.current}
-                            draggable={true}
-                            throttleDrag={0}
-                            resizable={selectedLayer?.type === 'image'}
-                            scalable={selectedLayer?.type === 'text'}
-                            rotatable={true}
-                            origin={false}
-                            keepRatio={selectedLayer?.type === 'image'}
-
-                            // Snapping & Guidelines
-                            snappable={true}
-                            snapContainer={containerRef.current}
-                            snapCenter={true}
-                            snapDirections={{ top: true, left: true, bottom: true, right: true, center: true, middle: true }}
-                            elementSnapDirections={{ top: true, left: true, bottom: true, right: true, center: true, middle: true }}
-                            horizontalGuidelines={[containerRef.current?.offsetHeight / 2]}
-                            verticalGuidelines={[containerRef.current?.offsetWidth / 2]}
-                            snapThreshold={5}
-                            isDisplaySnapDigit={false}
-                            snapGap={true}
-                            snapRotationThreshold={5}
-                            snapRotationDegrees={[0, 90, 180, 270]}
-
-                            onDragStart={e => {
-                                const layer = layers.find(l => l.id === selectedLayerId)
-                                if (layer) e.set(layer.translate)
-                            }}
-                            onDrag={e => {
-                                e.target.style.transform = e.transform
-                                updateLayer(selectedLayerId, { translate: e.beforeTranslate })
-                            }}
-
-                            onResizeStart={e => {
-                                e.setOrigin(["%", "%"])
-                                e.dragStart && e.dragStart.set(layers.find(l => l.id === selectedLayerId)?.translate || [0, 0])
-                            }}
-                            onResize={e => {
-                                e.target.style.width = `${e.width}px`
-                                e.target.style.height = `${e.height}px`
-                                e.target.style.transform = e.drag.transform
-                                updateLayer(selectedLayerId, {
-                                    width: e.width,
-                                    height: e.height,
-                                    translate: e.drag.beforeTranslate
-                                })
-                            }}
-
-                            onScaleStart={e => {
-                                const layer = layers.find(l => l.id === selectedLayerId)
-                                if (layer) e.set(layer.scale)
-                            }}
-                            onScale={e => {
-                                e.target.style.transform = e.drag.transform
-                                updateLayer(selectedLayerId, { scale: e.scale, translate: e.drag.beforeTranslate })
-                            }}
-
-                            onRotateStart={e => {
-                                const layer = layers.find(l => l.id === selectedLayerId)
-                                if (layer) e.set(layer.rotate)
-                            }}
-                            onRotate={e => {
-                                e.target.style.transform = e.drag.transform
-                                updateLayer(selectedLayerId, { rotate: e.beforeRotate, translate: e.drag.beforeTranslate })
-                            }}
-                        />
-                    )}
-                </div>
-
-                {/* Floating Controls */}
-                <div className="absolute bottom-4 left-0 right-0 flex flex-col items-center gap-3 px-4 pointer-events-none z-50">
-                    {/* Layer Controls */}
-                    {selectedLayerId && selectedLayer && (
-                        <div className="pointer-events-auto flex items-center gap-2 bg-black/60 backdrop-blur-md rounded-full px-3 py-2">
-                            {selectedLayer.type === 'text' && (
-                                <>
-                                    <button
-                                        onClick={() => { setShowColorPicker(!showColorPicker); setShowFontPicker(false); }}
-                                        className="w-8 h-8 rounded-full border-2 border-white/50"
-                                        style={{ backgroundColor: selectedLayer.color }}
-                                    />
-                                    <button
-                                        onClick={() => { setShowFontPicker(!showFontPicker); setShowColorPicker(false); }}
-                                        className="px-3 py-1 text-white text-sm bg-white/20 rounded-full"
-                                    >
-                                        Aa
-                                    </button>
-                                    <button
-                                        onClick={() => { setEditingLayerId(selectedLayerId); setEditText(selectedLayer.text); }}
-                                        className="px-3 py-1 text-white text-sm bg-white/20 rounded-full"
-                                    >
-                                        Edit
-                                    </button>
-                                </>
-                            )}
-                            {selectedLayer.type === 'image' && (
-                                <button
-                                    onClick={() => { setCroppingLayerId(selectedLayerId); setCrop(undefined); }}
-                                    className="px-3 py-1 text-white text-sm bg-white/20 rounded-full flex items-center gap-1"
-                                >
-                                    <Crop className="w-4 h-4" />
-                                    Crop
-                                </button>
-                            )}
-                            <button
-                                onClick={() => deleteLayer(selectedLayerId)}
-                                className="p-1.5 text-red-400 hover:bg-red-500/20 rounded-full"
-                            >
-                                <Trash2 className="w-5 h-5" />
-                            </button>
-                        </div>
-                    )}
-
-                    {/* Color Picker */}
-                    {showColorPicker && selectedLayerId && selectedLayer?.type === 'text' && (
-                        <div className="pointer-events-auto flex gap-2 bg-black/60 backdrop-blur-md rounded-full px-3 py-2">
-                            {TEXT_COLORS.map(color => (
-                                <button
-                                    key={color}
-                                    onClick={() => updateLayer(selectedLayerId, { color })}
-                                    className={`w-7 h-7 rounded-full border-2 ${selectedLayer?.color === color ? 'border-white scale-110' : 'border-transparent'}`}
-                                    style={{ backgroundColor: color }}
-                                />
-                            ))}
-                        </div>
-                    )}
-
-                    {/* Font Picker */}
-                    {showFontPicker && selectedLayerId && selectedLayer?.type === 'text' && (
-                        <div className="pointer-events-auto flex gap-2 bg-black/60 backdrop-blur-md rounded-full px-3 py-2">
-                            {FONT_STYLES.map(font => (
-                                <button
-                                    key={font.id}
-                                    onClick={() => updateLayer(selectedLayerId, { fontStyleId: font.id })}
-                                    className={`px-3 py-1 text-white text-sm rounded-full ${selectedLayer?.fontStyleId === font.id ? 'bg-white/40' : 'bg-white/10'}`}
-                                    style={font.style}
-                                >
-                                    {font.name}
-                                </button>
-                            ))}
-                        </div>
-                    )}
-
-                    {/* Add Buttons */}
-                    <div className="pointer-events-auto flex gap-3">
+            {/* Main Layout */}
+            <div className="flex-1 flex flex-col lg:flex-row overflow-hidden bg-[#050505]">
+                
+                {/* Desktop Left Sidebar: Selection Tools */}
+                <div className="hidden lg:flex flex-col w-72 bg-zinc-900/50 border-r border-white/5 p-6 gap-6 overflow-y-auto">
+                    <h3 className="text-zinc-400 text-xs font-bold uppercase tracking-widest">Canvas Layers</h3>
+                    <div className="flex flex-col gap-3">
                         <button
                             onClick={addTextLayer}
-                            className="px-4 py-2 bg-white/20 backdrop-blur-sm text-white rounded-full text-sm flex items-center gap-2 hover:bg-white/30"
+                            className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/10 transition-all group"
                         >
-                            <Type className="w-4 h-4" />
-                            Add Text
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-purple-500/20 text-purple-400 rounded-lg group-hover:bg-purple-500 group-hover:text-white transition-all">
+                                    <Type className="w-5 h-5" />
+                                </div>
+                                <span className="text-white font-medium">Add Text</span>
+                            </div>
+                            <Plus className="w-4 h-4 text-zinc-500" />
                         </button>
                         <button
                             onClick={() => layerFileInputRef.current?.click()}
-                            className="px-4 py-2 bg-white/20 backdrop-blur-sm text-white rounded-full text-sm flex items-center gap-2 hover:bg-white/30"
+                            className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/10 transition-all group"
                         >
-                            <ImageIcon className="w-4 h-4" />
-                            Add Image
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-pink-500/20 text-pink-400 rounded-lg group-hover:bg-pink-500 group-hover:text-white transition-all">
+                                    <ImageIcon className="w-5 h-5" />
+                                </div>
+                                <span className="text-white font-medium">Add Photo</span>
+                            </div>
+                            <Plus className="w-4 h-4 text-zinc-500" />
                         </button>
                     </div>
 
-                    {/* Background Selector */}
-                    <div className="flex items-center gap-2 overflow-x-auto pb-2 pointer-events-auto w-full max-w-sm justify-center">
-                        {/* Background image option */}
-                        <button
-                            onClick={() => bgFileInputRef.current?.click()}
-                            className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center bg-zinc-700 hover:bg-zinc-600 transition-colors ${bgType === 'image' ? 'ring-2 ring-white ring-offset-2 ring-offset-black' : ''}`}
-                        >
-                            <ImageIcon className="w-5 h-5 text-white" />
-                        </button>
-
-                        {/* Gradients */}
-                        {BACKGROUND_GRADIENTS.map((bg, index) => (
+                    <div className="mt-4">
+                        <h3 className="text-zinc-400 text-xs font-bold uppercase tracking-widest mb-4">Background</h3>
+                        <div className="grid grid-cols-4 gap-3">
                             <button
-                                key={bg.id}
-                                onClick={() => { setBgType('gradient'); setBgGradientIndex(index); }}
-                                className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex-shrink-0 transition-transform ${bgType === 'gradient' && bgGradientIndex === index ? 'scale-110 ring-2 ring-white ring-offset-2 ring-offset-black' : 'hover:scale-105'
-                                    }`}
-                                style={{ background: bg.gradient }}
+                                onClick={() => bgFileInputRef.current?.click()}
+                                className={`aspect-square rounded-xl flex items-center justify-center bg-zinc-800 border-2 transition-all ${bgType === 'image' ? 'border-purple-500 bg-purple-500/10' : 'border-transparent hover:bg-zinc-700'}`}
+                            >
+                                <ImageIcon className="w-6 h-6 text-zinc-400" />
+                            </button>
+                            {BACKGROUND_GRADIENTS.map((bg, index) => (
+                                <button
+                                    key={bg.id}
+                                    onClick={() => { setBgType('gradient'); setBgGradientIndex(index); }}
+                                    className={`aspect-square rounded-xl transition-all ${bgType === 'gradient' && bgGradientIndex === index ? 'ring-2 ring-purple-500 ring-offset-2 ring-offset-black scale-95' : 'hover:scale-105'}`}
+                                    style={{ background: bg.gradient }}
+                                />
+                            ))}
+                        </div>
+                    </div>
+
+                    {bgType === 'image' && (
+                        <div className="mt-4 flex flex-col gap-2">
+                             <button
+                                onClick={() => setSelectedLayerId('background')}
+                                className="w-full flex items-center gap-3 p-4 bg-purple-500/10 hover:bg-purple-500/20 rounded-2xl border border-purple-500/30 transition-all text-purple-400 font-medium group"
+                            >
+                                <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+                                Adjust Background
+                            </button>
+                        </div>
+                    )}
+                </div>
+
+                {/* Editor Surface */}
+                <div ref={previewWrapperRef} className="flex-1 relative flex items-start justify-center p-4 lg:p-8 min-h-0 overflow-hidden" onClick={() => { setSelectedLayerId(null); setShowColorPicker(false); setShowFontPicker(false); }}>
+                    {/* Story Canvas */}
+                    <div
+                        ref={containerRef}
+                        className="relative overflow-hidden shadow-[0_0_100px_rgba(0,0,0,1)] bg-black ring-4 ring-purple-500/40 ring-offset-4 ring-offset-black transition-all duration-300 mt-4 lg:mt-0"
+                        style={{
+                            width: CANVAS_WIDTH,
+                            height: CANVAS_HEIGHT,
+                            transform: `scale(${displayScale})`,
+                            transformOrigin: 'top center',
+                            flexShrink: 0
+                        }}
+                    >
+                        {/* High-Visibility Edge Border */}
+                        <div className="absolute inset-0 border-12 border-white/5 pointer-events-none z-60" />
+                        <div className="absolute inset-0 border-2 border-purple-500/30 pointer-events-none z-60" />
+                        
+                        {/* Decorative Corner Accents - More Prominent */}
+                        <div className="absolute top-0 left-0 w-32 h-32 border-t-10 border-l-10 border-purple-500 z-60 pointer-events-none rounded-tl-2xl shadow-[0_0_15px_rgba(168,85,247,0.5)]" />
+                        <div className="absolute top-0 right-0 w-32 h-32 border-t-10 border-r-10 border-purple-500 z-60 pointer-events-none rounded-tr-2xl shadow-[0_0_15px_rgba(168,85,247,0.5)]" />
+                        <div className="absolute bottom-0 left-0 w-32 h-32 border-b-10 border-l-10 border-purple-500 z-60 pointer-events-none rounded-bl-2xl shadow-[0_0_15px_rgba(168,85,247,0.5)]" />
+                        <div className="absolute bottom-0 right-0 w-32 h-32 border-b-10 border-r-10 border-purple-500 z-60 pointer-events-none rounded-br-2xl shadow-[0_0_15px_rgba(168,85,247,0.5)]" />
+
+                        {/* Background */}
+                        {bgType === 'image' && bgImageUrl ? (
+                            <div
+                                id="layer-background"
+                                className="absolute top-0 left-0"
+                                style={{
+                                    width: `${bgTransform.width}px`,
+                                    height: `${bgTransform.height}px`,
+                                    transform: `translate(${bgTransform.translate[0]}px, ${bgTransform.translate[1]}px) rotate(${bgTransform.rotate}deg) scale(${bgTransform.scale[0]}, ${bgTransform.scale[1]})`,
+                                    transformOrigin: 'top left',
+                                    zIndex: 0
+                                }}
+                                onClick={(e) => { e.stopPropagation(); setSelectedLayerId('background'); }}
+                            >
+                                <img src={bgImageUrl} alt="Background" className="w-full h-full object-cover pointer-events-none select-none" />
+                            </div>
+                        ) : (
+                            <div className="w-full h-full" style={{ background: BACKGROUND_GRADIENTS[bgGradientIndex].gradient }} />
+                        )}
+
+                        {/* Safety Guides (Visual Only) */}
+                        <div className="absolute top-0 left-0 right-0 h-40 bg-linear-to-b from-black/40 to-transparent pointer-events-none z-30 opacity-50" />
+                        <div className="absolute bottom-0 left-0 right-0 h-40 bg-linear-to-t from-black/40 to-transparent pointer-events-none z-30 opacity-50" />
+                        <div className="absolute top-4 left-4 right-4 h-1 rounded-full bg-white/10 pointer-events-none z-30" />
+                        <div className="absolute top-12 left-4 w-12 h-12 rounded-full bg-white/10 pointer-events-none z-30" />
+
+                        {/* Layers */}
+                        {layers.map(layer => {
+                            if (layer.type === 'text') {
+                                if (!layer.text.trim()) return null
+                                const fontStyle = getFontStyle(layer.fontStyleId)
+                                const isNeon = layer.fontStyleId === 'neon'
+
+                                return (
+                                    <div
+                                        key={layer.id}
+                                        id={`layer-${layer.id}`}
+                                        className="absolute top-0 left-0"
+                                        style={{
+                                            transform: `translate(${layer.translate[0]}px, ${layer.translate[1]}px) rotate(${layer.rotate}deg) scale(${layer.scale[0]}, ${layer.scale[1]})`,
+                                            transformOrigin: 'top left',
+                                            width: 'max-content',
+                                            maxWidth: '90%',
+                                            cursor: 'move',
+                                            zIndex: selectedLayerId === layer.id ? 20 : 10,
+                                        }}
+                                        onClick={(e) => { e.stopPropagation(); setSelectedLayerId(layer.id); }}
+                                        onDoubleClick={(e) => { e.stopPropagation(); setEditingLayerId(layer.id); setEditText(layer.text); }}
+                                    >
+                                        <p
+                                            className="text-center whitespace-pre-wrap select-none px-4"
+                                            style={{
+                                                color: layer.color,
+                                                fontSize: `${layer.fontSize}px`,
+                                                ...fontStyle,
+                                                textShadow: isNeon
+                                                    ? `0 0 10px ${layer.color}, 0 0 20px ${layer.color}, 0 0 30px ${layer.color}`
+                                                    : '3px 3px 10px rgba(0,0,0,0.5)',
+                                            }}
+                                        >
+                                            {layer.text}
+                                        </p>
+                                    </div>
+                                )
+                            }
+
+                            if (layer.type === 'image') {
+                                return (
+                                    <div
+                                        key={layer.id}
+                                        id={`layer-${layer.id}`}
+                                        className="absolute top-0 left-0"
+                                        style={{
+                                            transform: `translate(${layer.translate[0]}px, ${layer.translate[1]}px) rotate(${layer.rotate}deg) scale(${layer.scale[0]}, ${layer.scale[1]})`,
+                                            transformOrigin: 'top left',
+                                            width: `${layer.width}px`,
+                                            height: `${layer.height}px`,
+                                            cursor: 'move',
+                                            zIndex: selectedLayerId === layer.id ? 20 : 10,
+                                        }}
+                                        onClick={(e) => { e.stopPropagation(); setSelectedLayerId(layer.id); }}
+                                    >
+                                        <img
+                                            src={layer.imageUrl}
+                                            alt="Layer"
+                                            className="w-full h-full object-contain rounded-lg shadow-xl select-none pointer-events-none"
+                                            draggable={false}
+                                        />
+                                    </div>
+                                )
+                            }
+                            return null
+                        })}
+
+                        {/* Moveable */}
+                        {selectedLayerId && getTarget() && !editingLayerId && !croppingLayerId && (
+                            <Moveable
+                                target={getTarget()}
+                                container={containerRef.current}
+                                draggable={true}
+                                throttleDrag={0}
+                                resizable={selectedLayer?.type === 'image'}
+                                scalable={selectedLayer?.type === 'text' || selectedLayer?.type === 'background'}
+                                rotatable={true}
+                                origin={false}
+                                keepRatio={selectedLayer?.type === 'image' || selectedLayer?.type === 'background'}
+                                
+                                // Coordinate Adjustment
+                                zoom={1 / displayScale}
+                                
+                                // Snapping
+                                snappable={true}
+                                snapContainer={containerRef.current}
+                                snapCenter={true}
+                                snapDirections={{ top: true, left: true, bottom: true, right: true, center: true, middle: true }}
+                                elementSnapDirections={{ top: true, left: true, bottom: true, right: true, center: true, middle: true }}
+                                horizontalGuidelines={[CANVAS_HEIGHT / 2]}
+                                verticalGuidelines={[CANVAS_WIDTH / 2]}
+                                snapThreshold={5 * (1/displayScale)}
+
+                                onDragStart={e => {
+                                    if (selectedLayerId === 'background') {
+                                        e.set(bgTransform.translate)
+                                    } else {
+                                        const layer = layers.find(l => l.id === selectedLayerId)
+                                        if (layer) e.set(layer.translate)
+                                    }
+                                }}
+                                onDrag={e => {
+                                    e.target.style.transform = e.transform
+                                    if (selectedLayerId === 'background') {
+                                        setBgTransform(prev => ({ ...prev, translate: e.beforeTranslate }))
+                                    } else {
+                                        updateLayer(selectedLayerId, { translate: e.beforeTranslate })
+                                    }
+                                }}
+
+                                onResizeStart={e => {
+                                    e.setOrigin(["0", "0"])
+                                    const layerTranslate = selectedLayerId === 'background' 
+                                        ? bgTransform.translate 
+                                        : (layers.find(l => l.id === selectedLayerId)?.translate || [0, 0])
+                                    e.dragStart && e.dragStart.set(layerTranslate)
+                                }}
+                                onResize={e => {
+                                    e.target.style.width = `${e.width}px`
+                                    e.target.style.height = `${e.height}px`
+                                    e.target.style.transform = e.drag.transform
+                                    updateLayer(selectedLayerId, {
+                                        width: e.width,
+                                        height: e.height,
+                                        translate: e.drag.beforeTranslate
+                                    })
+                                }}
+
+                                onScaleStart={e => {
+                                    if (selectedLayerId === 'background') {
+                                        e.set(bgTransform.scale)
+                                    } else {
+                                        const layer = layers.find(l => l.id === selectedLayerId)
+                                        if (layer) e.set(layer.scale)
+                                    }
+                                }}
+                                onScale={e => {
+                                    e.target.style.transform = e.drag.transform
+                                    if (selectedLayerId === 'background') {
+                                        setBgTransform(prev => ({ ...prev, scale: e.scale, translate: e.drag.beforeTranslate }))
+                                    } else {
+                                        updateLayer(selectedLayerId, { scale: e.scale, translate: e.drag.beforeTranslate })
+                                    }
+                                }}
+
+                                onRotateStart={e => {
+                                    if (selectedLayerId === 'background') {
+                                        e.set(bgTransform.rotate)
+                                    } else {
+                                        const layer = layers.find(l => l.id === selectedLayerId)
+                                        if (layer) e.set(layer.rotate)
+                                    }
+                                }}
+                                onRotate={e => {
+                                    e.target.style.transform = e.transform
+                                    if (selectedLayerId === 'background') {
+                                        setBgTransform(prev => ({ ...prev, rotate: e.beforeRotate, translate: e.drag.beforeTranslate }))
+                                    } else {
+                                        updateLayer(selectedLayerId, { rotate: e.beforeRotate, translate: e.drag.beforeTranslate })
+                                    }
+                                }}
                             />
-                        ))}
+                        )}
+                    </div>
+                </div>
+
+                {/* Floating Toolbars/Drawers */}
+                <div className="absolute lg:static bottom-0 left-0 right-0 z-50 p-4 pointer-events-none">
+                    <div className="max-w-xl mx-auto flex flex-col items-center gap-4 pointer-events-auto">
+                        
+                        {/* Layer Specific Controls */}
+                        {selectedLayerId && (
+                            <div className="flex items-center gap-3 bg-zinc-900 border border-white/10 shadow-2xl rounded-2xl px-4 py-3 animate-in slide-in-from-bottom-4">
+                                {selectedLayer?.type === 'text' && (
+                                    <>
+                                        <button
+                                            onClick={() => { setShowColorPicker(!showColorPicker); setShowFontPicker(false); }}
+                                            className="w-10 h-10 rounded-xl border-2 border-white/20 transition-transform active:scale-95"
+                                            style={{ backgroundColor: selectedLayer.color }}
+                                        />
+                                        <button
+                                            onClick={() => { setShowFontPicker(!showFontPicker); setShowColorPicker(false); }}
+                                            className="h-10 px-4 text-white text-sm font-bold bg-white/5 hover:bg-white/10 rounded-xl transition-all"
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <Sparkles className="w-4 h-4 text-purple-400" />
+                                                ABC
+                                            </div>
+                                        </button>
+                                        <div className="w-px h-6 bg-white/10 mx-1" />
+                                    </>
+                                )}
+                                {selectedLayer?.type === 'image' && (
+                                    <button
+                                        onClick={() => { setCroppingLayerId(selectedLayerId); setCrop(undefined); }}
+                                        className="h-10 px-4 text-white text-sm font-bold bg-white/5 hover:bg-white/10 rounded-xl transition-all flex items-center gap-2"
+                                    >
+                                        <Crop className="w-4 h-4 text-pink-400" />
+                                        Crop
+                                    </button>
+                                )}
+                                <button
+                                    onClick={() => deleteLayer(selectedLayerId)}
+                                    className="h-10 px-4 text-red-400 hover:bg-red-500/10 rounded-xl transition-all flex items-center gap-2"
+                                >
+                                    <Trash2 className="w-5 h-5" />
+                                    <span className="hidden sm:inline">Delete</span>
+                                </button>
+                                {selectedLayerId === 'background' && (
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => {
+                                                const img = new Image()
+                                                img.onload = () => {
+                                                    const scale = Math.max(CANVAS_WIDTH / img.width, CANVAS_HEIGHT / img.height)
+                                                    const w = img.width * scale
+                                                    const h = img.height * scale
+                                                    setBgTransform({
+                                                        translate: [(CANVAS_WIDTH - w) / 2, (CANVAS_HEIGHT - h) / 2],
+                                                        rotate: 0,
+                                                        scale: [1, 1],
+                                                        width: Math.round(w),
+                                                        height: Math.round(h)
+                                                    })
+                                                }
+                                                img.src = bgImageUrl
+                                            }}
+                                            className="h-10 px-4 text-white text-sm font-bold bg-white/5 hover:bg-white/10 rounded-xl transition-all"
+                                        >
+                                            Smart Fill
+                                        </button>
+                                        <button
+                                            onClick={() => setBgTransform(prev => ({ ...prev, translate: [(CANVAS_WIDTH - prev.width) / 2, (CANVAS_HEIGHT - prev.height) / 2] }))}
+                                            className="h-10 px-4 text-white text-sm font-bold bg-white/5 hover:bg-white/10 rounded-xl transition-all"
+                                        >
+                                            Center
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Property Pickers */}
+                        {(showColorPicker || showFontPicker) && selectedLayer?.type === 'text' && (
+                            <div className="w-full bg-zinc-900/90 backdrop-blur-xl border border-white/10 rounded-3xl p-4 shadow-2xl animate-in fade-in zoom-in-95">
+                                {showColorPicker && (
+                                    <div className="flex overflow-x-auto gap-3 no-scrollbar pb-1">
+                                        {TEXT_COLORS.map(color => (
+                                            <button
+                                                key={color}
+                                                onClick={() => updateLayer(selectedLayerId, { color })}
+                                                className={`w-10 h-10 rounded-full flex-shrink-0 border-2 transition-all ${selectedLayer?.color === color ? 'border-purple-500 scale-110 shadow-[0_0_15px_rgba(168,85,247,0.5)]' : 'border-white/10 hover:scale-105'}`}
+                                                style={{ backgroundColor: color }}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
+                                {showFontPicker && (
+                                    <div className="flex overflow-x-auto gap-3 no-scrollbar pb-1">
+                                        {FONT_STYLES.map(font => (
+                                            <button
+                                                key={font.id}
+                                                onClick={() => updateLayer(selectedLayerId, { fontStyleId: font.id })}
+                                                className={`px-5 py-3 whitespace-nowrap text-white rounded-xl transition-all ${selectedLayer?.fontStyleId === font.id ? 'bg-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.5)]' : 'bg-white/5 hover:bg-white/10'}`}
+                                                style={font.style}
+                                            >
+                                                {font.name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Mobile Quick Actions */}
+                        <div className="lg:hidden flex items-center gap-2 bg-zinc-900/80 backdrop-blur-md px-2 py-2 rounded-full border border-white/10">
+                             <button
+                                onClick={addTextLayer}
+                                className="w-12 h-12 flex items-center justify-center bg-white/5 text-white rounded-full hover:bg-white/10"
+                            >
+                                <Type className="w-5 h-5" />
+                            </button>
+                            <button
+                                onClick={() => layerFileInputRef.current?.click()}
+                                className="w-12 h-12 flex items-center justify-center bg-white/5 text-white rounded-full hover:bg-white/10"
+                            >
+                                <ImageIcon className="w-5 h-5" />
+                            </button>
+                            <div className="w-px h-6 bg-white/10 mx-1" />
+                            <div className="flex gap-2 overflow-x-auto no-scrollbar max-w-[200px]">
+                                <button
+                                    onClick={() => bgFileInputRef.current?.click()}
+                                    className={`w-10 h-10 rounded-full shrink-0 flex items-center justify-center bg-zinc-800 border-2 transition-all ${bgType === 'image' ? 'border-purple-500' : 'border-transparent'}`}
+                                >
+                                    <ImageIcon className="w-5 h-5 text-zinc-400" />
+                                </button>
+                                {BACKGROUND_GRADIENTS.map((bg, index) => (
+                                    <button
+                                        key={bg.id}
+                                        onClick={() => { setBgType('gradient'); setBgGradientIndex(index); }}
+                                        className={`w-10 h-10 rounded-full flex-shrink-0 transition-all ${bgType === 'gradient' && bgGradientIndex === index ? 'ring-2 ring-purple-500 ring-offset-2 ring-offset-black scale-90' : ''}`}
+                                        style={{ background: bg.gradient }}
+                                    />
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -680,6 +908,17 @@ export default function CreateStory({ isOpen, onClose }) {
             {/* Hidden file inputs */}
             <input ref={bgFileInputRef} type="file" accept="image/*" onChange={handleBgImageSelect} className="hidden" />
             <input ref={layerFileInputRef} type="file" accept="image/*" onChange={handleLayerImageSelect} className="hidden" />
+            {/* Editing Overlay */}
+            {isPosting && (
+                <div className="absolute inset-0 z-200 bg-black/80 backdrop-blur-xl flex flex-col items-center justify-center animate-in fade-in duration-300">
+                    <div className="relative">
+                        <div className="w-20 h-20 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin" />
+                        <Sparkles className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 text-purple-400 animate-pulse" />
+                    </div>
+                    <h2 className="mt-8 text-2xl font-bold text-white tracking-tight">Processing Story...</h2>
+                    <p className="mt-2 text-zinc-400 font-medium">Creating your high-res masterpiece</p>
+                </div>
+            )}
         </div>
     )
 }

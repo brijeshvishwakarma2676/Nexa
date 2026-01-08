@@ -1,9 +1,10 @@
-import { useEffect, useState, useCallback } from 'react'
-import { X, ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react'
+import { useEffect, useState, useCallback, useRef, useLayoutEffect } from 'react'
+import { X, ChevronLeft, ChevronRight, Pause, Play, Loader2 } from 'lucide-react'
 import { useStoryStore } from '../stores/storyStore'
 import { formatDistanceToNow } from 'date-fns'
 
 const STORY_DURATION = 5000 // 5 seconds per story
+const PROGRESS_INTERVAL = 50 // Update every 50ms for smooth animation
 
 export default function StoryViewer() {
   const {
@@ -19,34 +20,55 @@ export default function StoryViewer() {
 
   const [progress, setProgress] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
   const currentStory = getCurrentStory()
   const currentGroup = getCurrentGroup()
 
-  // Auto-advance timer
-  useEffect(() => {
-    if (!currentStory || isPaused) return
+  // Track elapsed time and image ref
+  const elapsedRef = useRef(0)
+  const imgRef = useRef(null)
 
+  // Reset progress and loading when story changes
+  useEffect(() => {
     setProgress(0)
+    elapsedRef.current = 0
+    
+    // If it's a text story, we don't need to wait at all
+    if (!currentStory?.image_url) {
+      setIsLoading(false)
+      return
+    }
+
+    setIsLoading(true)
+
+    // Check if image is already cached/complete immediately
+    if (imgRef.current?.complete) {
+      setIsLoading(false)
+    }
+    
+    // Safety fallback: if anything gets stuck, force stop loading after 2s
+    const fallback = setTimeout(() => setIsLoading(false), 2000)
+    return () => clearTimeout(fallback)
+  }, [currentStory?.id])
+
+  // Simple interval-based timer (more stable than RAF)
+  useEffect(() => {
+    if (!currentStory || isPaused || isLoading) return
 
     const interval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          return prev
-        }
-        return prev + (100 / (STORY_DURATION / 100))
-      })
-    }, 100)
+      elapsedRef.current += PROGRESS_INTERVAL
+      const newProgress = Math.min((elapsedRef.current / STORY_DURATION) * 100, 100)
+      setProgress(newProgress)
 
-    const timeout = setTimeout(() => {
-      nextStory()
-    }, STORY_DURATION)
+      if (newProgress >= 100) {
+        clearInterval(interval)
+        nextStory()
+      }
+    }, PROGRESS_INTERVAL)
 
-    return () => {
-      clearInterval(interval)
-      clearTimeout(timeout)
-    }
-  }, [currentStory?.id, isPaused, nextStory])
+    return () => clearInterval(interval)
+  }, [currentStory?.id, isPaused, isLoading, nextStory])
 
   // Keyboard navigation
   useEffect(() => {
@@ -72,26 +94,29 @@ export default function StoryViewer() {
 
   return (
     <div className="fixed inset-0 bg-black z-50 flex items-center justify-center">
-      {/* Close button */}
+      {/* Close button - high z-index */}
       <button
-        onClick={closeViewer}
-        className="absolute top-4 right-4 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors z-10"
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => { e.stopPropagation(); closeViewer(); }}
+        className="absolute top-4 right-4 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors z-50 pointer-events-auto"
       >
         <X className="w-6 h-6" />
       </button>
 
-      {/* Previous button */}
+      {/* Previous button - high z-index and stop propagation */}
       <button
-        onClick={prevStory}
-        className="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors z-10"
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => { e.stopPropagation(); prevStory(); }}
+        className="absolute left-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors z-50 pointer-events-auto"
       >
         <ChevronLeft className="w-8 h-8" />
       </button>
 
-      {/* Next button */}
+      {/* Next button - high z-index and stop propagation */}
       <button
-        onClick={nextStory}
-        className="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors z-10"
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => { e.stopPropagation(); nextStory(); }}
+        className="absolute right-4 top-1/2 -translate-y-1/2 p-3 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors z-50 pointer-events-auto"
       >
         <ChevronRight className="w-8 h-8" />
       </button>
@@ -123,11 +148,14 @@ export default function StoryViewer() {
                         : '0%',
                 }}
               />
+              {index === currentStoryIndex && isLoading && (
+                <div className="absolute inset-0 bg-white/20 animate-pulse" />
+              )}
             </div>
           ))}
         </div>
 
-        {/* User info */}
+        {/* User info */}                                             
         <div className="absolute top-10 left-4 right-4 flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
             <img
@@ -155,7 +183,12 @@ export default function StoryViewer() {
 
         {/* Story image or text - click areas for navigation */}
         <div
-          className="w-full h-full"
+          className="w-full h-full relative"
+          onMouseDown={() => { if (!isLoading) setIsPaused(true); }}
+          onMouseUp={() => setIsPaused(false)}
+          onMouseLeave={() => setIsPaused(false)}
+          onTouchStart={() => { if (!isLoading) setIsPaused(true); }}
+          onTouchEnd={() => setIsPaused(false)}
           onClick={(e) => {
             const rect = e.currentTarget.getBoundingClientRect()
             const x = e.clientX - rect.left
@@ -163,19 +196,29 @@ export default function StoryViewer() {
               prevStory()
             } else if (x > rect.width * 2 / 3) {
               nextStory()
-            } else {
-              setIsPaused((p) => !p)
             }
           }}
         >
+          {isLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-zinc-900/10 backdrop-blur-sm z-20">
+              <Loader2 className="w-12 h-12 text-white animate-spin opacity-50" />
+            </div>
+          )}
+
           {currentStory.image_url ? (
             <img
+              ref={imgRef}
               src={currentStory.image_url}
               alt="Story"
-              className="w-full h-full object-cover"
+              className={`w-full h-full object-cover transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
+              onLoad={(e) => { if (e.currentTarget.complete) setIsLoading(false); }}
+              onError={() => setIsLoading(false)}
+              loading="eager"
             />
           ) : (
-            <div className="w-full h-full bg-linear-to-br from-(--color-primary) to-(--color-secondary) flex items-center justify-center p-8">
+            <div 
+              className="w-full h-full bg-linear-to-br from-(--color-primary) to-(--color-secondary) flex items-center justify-center p-8"
+            >
               <p className="text-white text-2xl font-bold text-center leading-relaxed drop-shadow-lg">
                 {currentStory.content}
               </p>
