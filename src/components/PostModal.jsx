@@ -4,17 +4,13 @@ import {
     X, Heart, MessageCircle, Share2, Bookmark, MoreHorizontal,
     ChevronLeft, ChevronRight, Send, Loader2
 } from 'lucide-react'
-import { formatDistanceToNow } from 'date-fns'
+import { formatTimeAgo } from '../utils/dateUtils'
+import ShareModal from './ShareModal'
 import { useFeedStore } from '../stores/feedStore'
 import { useAuthStore } from '../stores/authStore'
 import api from '../services/api'
 
-// Format time without "about" prefix
-const formatTimeAgo = (date) => {
-    return formatDistanceToNow(new Date(date), { addSuffix: true })
-        .replace('about ', '')
-        .replace('less than ', '')
-}
+// Redundant local formatter removed
 
 export default function PostModal({ post, onClose }) {
     const navigate = useNavigate()
@@ -28,6 +24,7 @@ export default function PostModal({ post, onClose }) {
     const [isLiked, setIsLiked] = useState(post.is_liked)
     const [likesCount, setLikesCount] = useState(post.likes_count)
     const [isSaved, setIsSaved] = useState(false)
+    const [showShareModal, setShowShareModal] = useState(false)
 
     // Fetch comments
     useEffect(() => {
@@ -275,7 +272,10 @@ export default function PostModal({ post, onClose }) {
                                 <button className="hover:scale-110 transition-transform active:scale-95">
                                     <MessageCircle className="w-7 h-7 text-(--color-text-primary)" />
                                 </button>
-                                <button className="hover:scale-110 transition-transform active:scale-95">
+                                <button 
+                                    onClick={() => setShowShareModal(true)}
+                                    className="hover:scale-110 transition-transform active:scale-95"
+                                >
                                     <Share2 className="w-7 h-7 text-(--color-text-primary)" />
                                 </button>
                             </div>
@@ -318,6 +318,13 @@ export default function PostModal({ post, onClose }) {
                     </div>
                 </div>
             </div>
+
+            {showShareModal && (
+                <ShareModal 
+                    post={post} 
+                    onClose={() => setShowShareModal(false)} 
+                />
+            )}
         </div>
     )
 }

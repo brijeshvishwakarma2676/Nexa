@@ -4,21 +4,17 @@ import {
   ThumbsUp, MessageCircle, Share2, MoreHorizontal, X,
   Globe, Users as UsersIcon, Trash2, UserPlus
 } from 'lucide-react'
-import { formatDistanceToNow } from 'date-fns'
+import { formatTimeAgo } from '../utils/dateUtils'
 import { useFeedStore } from '../stores/feedStore'
 import { useAuthStore } from '../stores/authStore'
 import api from '../services/api'
 import Comments from './Comments'
 import PostModal from './PostModal'
+import ShareModal from './ShareModal'
 
 const MAX_CONTENT_LENGTH = 200
 
-// Format time without "about" prefix
-const formatTimeAgo = (date) => {
-  return formatDistanceToNow(new Date(date), { addSuffix: true })
-    .replace('about ', '')
-    .replace('less than ', '')
-}
+// Redundant local formatter removed - using centralized utils
 
 export default function Post({ post }) {
   const { user } = useAuthStore()
@@ -33,6 +29,7 @@ export default function Post({ post }) {
   const [currentStatus, setCurrentStatus] = useState(post.relationship_status || 'none')
   const [isSharing, setIsSharing] = useState(false)
   const [showModal, setShowModal] = useState(false)
+  const [showShareModal, setShowShareModal] = useState(false)
 
   const isOwner = user?.id === post.author.id
   const shouldTruncate = post.content?.length > MAX_CONTENT_LENGTH && !isExpanded
@@ -73,15 +70,8 @@ export default function Post({ post }) {
     }
   }
 
-  const handleShare = async () => {
-    setIsSharing(true)
-    try {
-      await sharePost(post.id)
-    } catch (error) {
-      console.error('Failed to share:', error)
-    } finally {
-      setIsSharing(false)
-    }
+  const handleShare = () => {
+    setShowShareModal(true)
   }
 
   const handleDelete = async () => {
@@ -337,6 +327,11 @@ export default function Post({ post }) {
       {/* Post Modal */}
       {showModal && (
         <PostModal post={post} onClose={() => setShowModal(false)} />
+      )}
+
+      {/* Share Modal */}
+      {showShareModal && (
+        <ShareModal post={post} onClose={() => setShowShareModal(false)} />
       )}
     </article>
   )

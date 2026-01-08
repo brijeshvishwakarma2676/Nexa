@@ -36,6 +36,7 @@
 - **Smart Image Container**: Posts and Modals now intelligently handle any aspect ratio without cropping.
 - **Frosted Glass Style**: Consistent semi-transparent, high-blur background (`backdrop-blur-2xl`) across feed and detail views.
 - **Responsive Modal**: `PostModal.jsx` is now fully optimized for mobile, featuring an internal floating close button and balanced content splitting for small screens.
+- **Instagram-style Post Sharing**: Users can now share posts directly with mutual friends via the "Share" button. This opens a `ShareModal` and sends a compact, rectangular post preview (`SharedPostView`) into the chat.
 
 ### 2. Story Viewer Improvements (Partially Working)
 

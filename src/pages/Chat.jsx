@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Send, Search, ArrowLeft, Loader2 } from 'lucide-react'
-import { formatDistanceToNow } from 'date-fns'
+import { formatTimeAgo } from '../utils/dateUtils'
 import { useChatStore } from '../stores/chatStore'
 import { useAuthStore } from '../stores/authStore'
+import SharedPostView from '../components/SharedPostView'
 
 export default function Chat() {
   const { conversationId } = useParams()
@@ -153,7 +154,7 @@ export default function Chat() {
                 className={`w-full flex items-center gap-3 p-4 hover:bg-(--color-bg) transition-colors ${currentConversation?.id === conv.id ? 'bg-(--color-primary-light)' : ''
                   }`}
               >
-                <div className="relative flex-shrink-0">
+                <div className="relative shrink-0">
                   <img
                     src={conv.other_user.avatar_url || `https://ui-avatars.com/api/?name=${conv.other_user.username}&background=4F46E5&color=fff`}
                     alt={conv.other_user.username}
@@ -165,23 +166,31 @@ export default function Chat() {
                 </div>
 
                 <div className="flex-1 min-w-0 text-left">
-                  <div className="flex items-center justify-between">
-                    <p className="font-semibold text-(--color-text-primary) truncate">
+                  <div className="flex items-center justify-between gap-2 overflow-hidden">
+                    <p className="font-semibold text-(--color-text-primary) truncate flex-1 min-w-0">
                       {conv.other_user.display_name || conv.other_user.username}
                     </p>
                     {conv.last_message && (
-                      <span className="text-xs text-(--color-text-muted)">
-                        {formatDistanceToNow(new Date(conv.last_message.created_at), { addSuffix: false })}
+                      <span className="text-xs text-(--color-text-muted) shrink-0 ml-2 whitespace-nowrap">
+                        {formatTimeAgo(conv.last_message.created_at)}
                       </span>
                     )}
                   </div>
 
                   <div className="flex items-center gap-2">
                     <p className="text-sm text-(--color-text-muted) truncate flex-1">
-                      {conv.last_message?.content || 'No messages yet'}
+                      {(() => {
+                        const content = conv.last_message?.content;
+                        if (!content) return 'No messages yet';
+                        const postMatch = content.match(/\[SHARED_POST:\d+:?(.*?)\]/);
+                        if (postMatch) {
+                          return postMatch[1] ? `Shared ${postMatch[1]}'s post` : 'Shared a post';
+                        }
+                        return content;
+                      })()}
                     </p>
                     {conv.unread_count > 0 && (
-                      <span className="badge flex-shrink-0">
+                      <span className="badge shrink-0">
                         {conv.unread_count}
                       </span>
                     )}
@@ -273,10 +282,17 @@ export default function Chat() {
                           : 'bg-(--color-bg) text-(--color-text-primary) rounded-bl-md'
                           }`}
                       >
-                        <p>{msg.content}</p>
+                        {msg.content.match(/\[SHARED_POST:(\d+)/) ? (
+                          <SharedPostView 
+                            postId={msg.content.match(/\[SHARED_POST:(\d+)/)?.[1]} 
+                            isMine={isMine} 
+                          />
+                        ) : (
+                          <p>{msg.content}</p>
+                        )}
                         <p className={`text-xs mt-1 ${isMine ? 'text-white/70' : 'text-(--color-text-muted)'
                           }`}>
-                          {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}
+                          {formatTimeAgo(msg.created_at)}
                         </p>
                       </div>
                     </div>

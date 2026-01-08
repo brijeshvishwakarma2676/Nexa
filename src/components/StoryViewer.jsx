@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef, useLayoutEffect } from 'react'
 import { X, ChevronLeft, ChevronRight, Pause, Play, Loader2 } from 'lucide-react'
 import { useStoryStore } from '../stores/storyStore'
-import { formatDistanceToNow } from 'date-fns'
+import { formatTimeAgo } from '../utils/dateUtils'
 
 const STORY_DURATION = 5000 // 5 seconds per story
 const PROGRESS_INTERVAL = 50 // Update every 50ms for smooth animation
@@ -168,7 +168,7 @@ export default function StoryViewer() {
                 {currentGroup.user.display_name || currentGroup.user.username}
               </p>
               <p className="text-white/70 text-sm drop-shadow">
-                {formatDistanceToNow(new Date(currentStory.created_at), { addSuffix: true })}
+                {formatTimeAgo(currentStory.created_at)}
               </p>
             </div>
           </div>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Bell, Check, CheckCheck, ArrowLeft } from 'lucide-react'
-import { formatDistanceToNow } from 'date-fns'
+import { formatTimeAgo } from '../utils/dateUtils'
 import { useNotificationStore } from '../stores/notificationStore'
 
 export default function Notifications() {
@@ -131,7 +131,7 @@ export default function Notifications() {
                                         {notification.message}
                                     </p>
                                     <p className="text-sm text-(--color-text-muted) mt-1">
-                                        {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                                        {formatTimeAgo(notification.created_at)}
                                     </p>
                                 </div>
 

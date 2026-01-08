@@ -8,7 +8,7 @@ import { useAuthStore } from '../stores/authStore'
 import { useNotificationStore } from '../stores/notificationStore'
 import { useChatStore } from '../stores/chatStore'
 import api from '../services/api'
-import { formatDistanceToNow } from 'date-fns'
+import { formatTimeAgo } from '../utils/dateUtils'
 import logo from '../assets/nexa_logo.png'
 import { UserPlus } from 'lucide-react'
 import LogoutModal from './LogoutModal'
@@ -294,7 +294,7 @@ export default function Navbar() {
                             {notification.message}
                           </p>
                           <p className="text-xs text-(--color-text-muted) mt-1">
-                            {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                            {formatTimeAgo(notification.created_at)}
                           </p>
                         </div>
                         {!notification.read && (

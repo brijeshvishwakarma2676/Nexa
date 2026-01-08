@@ -1,17 +1,12 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Send, Loader2 } from 'lucide-react'
-import { formatDistanceToNow } from 'date-fns'
+import { formatTimeAgo } from '../utils/dateUtils'
 import { useAuthStore } from '../stores/authStore'
 import { useFeedStore } from '../stores/feedStore'
 import api from '../services/api'
 
-// Format time without "about" prefix
-const formatTimeAgo = (date) => {
-  return formatDistanceToNow(new Date(date), { addSuffix: true })
-    .replace('about ', '')
-    .replace('less than ', '')
-}
+// Redundant local formatter removed
 
 export default function Comments({ postId }) {
   const { user } = useAuthStore()

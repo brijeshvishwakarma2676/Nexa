@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Heart, MessageCircle, Share2, Volume2, VolumeX, Plus, Play, Pause, ChevronUp, ChevronDown } from 'lucide-react'
-import { formatDistanceToNow } from 'date-fns'
+import { formatTimeAgo } from '../utils/dateUtils'
 import { useReelStore } from '../stores/reelStore'
 import { Link } from 'react-router-dom'
 import CreateReel from '../components/CreateReel'
@@ -247,7 +247,7 @@ export default function Reels() {
                                             </p>
                                         )}
                                         <p className="text-white/60 text-xs mt-1">
-                                            {formatDistanceToNow(new Date(reel.created_at), { addSuffix: true })}
+                                            {formatTimeAgo(reel.created_at)}
                                         </p>
                                     </div>
 
