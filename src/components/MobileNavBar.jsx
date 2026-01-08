@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Home, Video, Users, MessageCircle, UserPlus } from 'lucide-react'
+import { Home, Play, Users, MessageCircle, UserPlus } from 'lucide-react'
 
 export default function MobileNavBar() {
     const location = useLocation()
@@ -7,7 +7,7 @@ export default function MobileNavBar() {
 
     const navItems = [
         { id: 'home', label: 'Home', icon: Home, path: '/' },
-        { id: 'video', label: 'Video', icon: Video, path: '/video' },
+        { id: 'reels', label: 'Reels', icon: Play, path: '/reels' },
         { id: 'users', label: 'Users', icon: Users, path: '/users' },
         { id: 'chat', label: 'Chat', icon: MessageCircle, path: '/chat' },
         { id: 'requests', label: 'Requests', icon: UserPlus, path: '/requests' }
