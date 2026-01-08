@@ -34,7 +34,7 @@ export default function Notifications() {
         : notifications
 
     return (
-        <div className="max-w-2xl mx-auto py-6">
+        <div className="max-w-2xl mx-auto py-6 px-4 pb-20 lg:pb-4">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                 <div className="flex items-center gap-3">

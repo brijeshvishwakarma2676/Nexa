@@ -133,7 +133,7 @@ export default function Reels() {
 
     if (isLoading && reels.length === 0) {
         return (
-            <div className="h-screen flex items-center justify-center bg-black">
+            <div className="h-[calc(100vh-8rem)] lg:h-[calc(100vh-4rem)] flex items-center justify-center bg-black">
                 <div className="animate-spin w-10 h-10 border-4 border-white border-t-transparent rounded-full" />
             </div>
         )
@@ -141,7 +141,7 @@ export default function Reels() {
 
     if (!isLoading && reels.length === 0) {
         return (
-            <div className="h-screen flex flex-col items-center justify-center bg-black text-white">
+            <div className="h-[calc(100vh-8rem)] lg:h-[calc(100vh-4rem)] flex flex-col items-center justify-center bg-black text-white">
                 <Play className="w-16 h-16 mb-4 opacity-50" />
                 <h2 className="text-2xl font-bold mb-2">No Reels Yet</h2>
                 <p className="text-gray-400 mb-6">Be the first to share a reel!</p>
@@ -157,13 +157,13 @@ export default function Reels() {
     }
 
     return (
-        <div className="h-screen bg-black overflow-hidden">
+        <div className="h-[calc(100vh-8rem)] lg:h-[calc(100vh-4rem)] bg-black overflow-hidden">
             {/* Create Button */}
             <button
                 onClick={() => setShowCreateModal(true)}
-                className="fixed top-4 right-4 z-50 p-3 bg-white/20 backdrop-blur-sm rounded-full hover:bg-white/30 transition-colors"
+                className="fixed top-18 right-7 z-50 p-3 bg-white/10 backdrop-blur-xl border border-white/20 rounded-full hover:bg-white/20 hover:scale-110 active:scale-95 transition-all duration-300 shadow-[0_8px_32px_rgba(0,0,0,0.3)] group"
             >
-                <Plus className="w-6 h-6 text-white" />
+                <Plus className="w-6 h-6 text-white group-hover:rotate-90 transition-transform duration-300" />
             </button>
 
             {/* Navigation Arrows (Desktop) */}
@@ -194,7 +194,7 @@ export default function Reels() {
                 {reels.map((reel, index) => (
                     <div
                         key={reel.id}
-                        className="h-screen w-full snap-start snap-always flex items-center justify-center relative"
+                        className="h-[calc(100vh-8rem)] lg:h-[calc(100vh-4rem)] w-full snap-start snap-always flex items-center justify-center relative"
                     >
                         {/* Video */}
                         <video
@@ -221,7 +221,7 @@ export default function Reels() {
                         {/* Overlay Content */}
                         <div className="absolute inset-0 flex pointer-events-none max-w-md mx-auto">
                             {/* Left: Author Info */}
-                            <div className="absolute bottom-20 left-4 right-20 pointer-events-auto">
+                            <div className="absolute bottom-4 left-4 right-20 pointer-events-auto">
                                 <Link 
                                     to={`/profile/${reel.author.username}`}
                                     className="flex items-center gap-3 mb-3"
@@ -246,7 +246,7 @@ export default function Reels() {
                             </div>
 
                             {/* Right: Action Buttons */}
-                            <div className="action-buttons absolute bottom-20 right-4 flex flex-col gap-5 items-center pointer-events-auto">
+                            <div className="action-buttons absolute bottom-4 right-4 flex flex-col gap-5 items-center pointer-events-auto">
                                 {/* Like */}
                                 <button
                                     onClick={() => toggleLike(reel.id)}

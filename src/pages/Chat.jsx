@@ -77,7 +77,8 @@ export default function Chat() {
   const isOtherTyping = currentConversation && typingUsers[currentConversation.id]
 
   return (
-    <div className="card h-[calc(100vh-8rem)] flex overflow-hidden">
+    <div className="px-4 pb-20 lg:pb-4">
+    <div className="card h-[calc(100vh-8rem)] lg:h-[calc(100vh-6rem)] flex overflow-hidden">
       {/* Conversations List */}
       <div className={`w-full md:w-80 border-r border-(--color-border) flex flex-col ${conversationId ? 'hidden md:flex' : 'flex'
         }`}>
@@ -285,6 +286,7 @@ export default function Chat() {
           </div>
         )}
       </div>
+    </div>
     </div>
   )
 }

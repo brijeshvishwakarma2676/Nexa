@@ -39,8 +39,8 @@ function Layout() {
         {/* Left Sidebar */}
         {/* <Sidebar /> */}
 
-        {/* Main Content */}
-        <main className="flex-1 min-h-[calc(100vh-4rem)] px-4 pb-20 lg:pb-4">
+        {/* Main Content - No padding, each page handles its own */}
+        <main className="flex-1 min-h-[calc(100vh-4rem)]">
           <Outlet />
         </main>
       </div>
