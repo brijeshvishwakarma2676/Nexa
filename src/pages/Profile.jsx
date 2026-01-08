@@ -204,7 +204,7 @@ export default function Profile() {
   const relationshipStatus = profile.relationship_status || (profile.is_following ? 'following' : 'none')
 
   return (
-    <div className="mx-auto pb-20 lg:pb-4" style={{ maxWidth: '1100px' }}>
+    <div className="mx-auto pt-14 pb-20 lg:pb-4" style={{ maxWidth: '1100px' }}>
       {/* Cover Photo - Facebook style with ideal 851:315 ratio */}
       <div className="relative h-[250px] md:h-[407px] bg-linear-to-r from-gray-200 to-gray-300 rounded-b-xl overflow-hidden shadow-sm group">
         {/* Back Button */}

@@ -133,7 +133,7 @@ export default function Reels() {
 
     if (isLoading && reels.length === 0) {
         return (
-            <div className="h-[calc(100vh-8rem)] lg:h-[calc(100vh-4rem)] flex items-center justify-center bg-black">
+            <div className="fixed top-14 bottom-16 lg:bottom-0 left-0 right-0 bg-black flex items-center justify-center">
                 <div className="animate-spin w-10 h-10 border-4 border-white border-t-transparent rounded-full" />
             </div>
         )
@@ -141,7 +141,7 @@ export default function Reels() {
 
     if (!isLoading && reels.length === 0) {
         return (
-            <div className="h-[calc(100vh-8rem)] lg:h-[calc(100vh-4rem)] flex flex-col items-center justify-center bg-black text-white">
+            <div className="fixed top-14 bottom-16 lg:bottom-0 left-0 right-0 bg-black flex flex-col items-center justify-center text-white">
                 <Play className="w-16 h-16 mb-4 opacity-50" />
                 <h2 className="text-2xl font-bold mb-2">No Reels Yet</h2>
                 <p className="text-gray-400 mb-6">Be the first to share a reel!</p>
@@ -157,7 +157,7 @@ export default function Reels() {
     }
 
     return (
-        <div className="h-[calc(100vh-8rem)] lg:h-[calc(100vh-4rem)] bg-black overflow-hidden">
+        <div className="fixed inset-x-0 top-[56px] bottom-[64px] lg:bottom-0 bg-black overflow-hidden flex flex-col z-40">
             {/* Create Button */}
             <button
                 onClick={() => setShowCreateModal(true)}
@@ -194,93 +194,107 @@ export default function Reels() {
                 {reels.map((reel, index) => (
                     <div
                         key={reel.id}
-                        className="h-[calc(100vh-8rem)] lg:h-[calc(100vh-4rem)] w-full snap-start snap-always flex items-center justify-center relative"
+                        className="relative h-full w-full shrink-0 snap-start snap-always flex items-center justify-center lg:py-6"
                     >
-                        {/* Video */}
-                        <video
-                            ref={(el) => { videoRefs.current[reel.id] = el }}
-                            data-reel-id={reel.id}
-                            src={reel.video_url}
-                            className="h-full w-full object-contain max-w-md mx-auto"
-                            loop
-                            playsInline
-                            muted={isMuted}
-                            onClick={handleVideoClick}
-                            poster={reel.thumbnail_url}
-                        />
+                        {/* Reel Card - Focused vertical view on desktop */}
+                        <div className="relative h-full w-full lg:h-full lg:w-auto lg:aspect-9/16 bg-slate-900 lg:rounded-3xl lg:shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden group">
+                            {/* Video */}
+                            <video
+                                ref={(el) => { videoRefs.current[reel.id] = el }}
+                                data-reel-id={reel.id}
+                                src={reel.video_url}
+                                className="absolute inset-0 h-full w-full object-cover"
+                                loop
+                                playsInline
+                                muted={isMuted}
+                                onClick={handleVideoClick}
+                                poster={reel.thumbnail_url}
+                            />
 
-                        {/* Play/Pause Indicator */}
-                        {currentIndex === index && !isPlaying && (
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                <div className="p-4 bg-black/50 rounded-full">
-                                    <Play className="w-12 h-12 text-white" fill="white" />
+                            {/* Play/Pause Indicator */}
+                            {currentIndex === index && !isPlaying && (
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none transition-opacity">
+                                    <div className="p-5 bg-black/40 backdrop-blur-sm rounded-full scale-110">
+                                        <Play className="w-12 h-12 text-white fill-white" />
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
 
-                        {/* Overlay Content */}
-                        <div className="absolute inset-0 flex pointer-events-none max-w-md mx-auto">
-                            {/* Left: Author Info */}
-                            <div className="absolute bottom-4 left-4 right-20 pointer-events-auto">
-                                <Link 
-                                    to={`/profile/${reel.author.username}`}
-                                    className="flex items-center gap-3 mb-3"
-                                >
-                                    <img
-                                        src={reel.author.avatar_url || `https://ui-avatars.com/api/?name=${reel.author.username}&background=4F46E5&color=fff`}
-                                        alt={reel.author.username}
-                                        className="w-10 h-10 rounded-full border-2 border-white"
-                                    />
-                                    <span className="font-semibold text-white text-shadow">
-                                        {reel.author.display_name || reel.author.username}
-                                    </span>
-                                </Link>
-                                {reel.caption && (
-                                    <p className="text-white text-sm text-shadow line-clamp-2">
-                                        {reel.caption}
-                                    </p>
-                                )}
-                                <p className="text-white/70 text-xs mt-1">
-                                    {formatDistanceToNow(new Date(reel.created_at), { addSuffix: true })}
-                                </p>
-                            </div>
+                            {/* Overlay Content - Relative to the card */}
+                            <div className="absolute inset-0 flex flex-col justify-end pointer-events-none">
+                                {/* Bottom Shadow Gradient */}
+                                <div className="absolute inset-x-0 bottom-0 h-48 bg-linear-to-t from-black/80 to-transparent" />
+                                
+                                <div className="relative p-4 flex items-end justify-between gap-4">
+                                    {/* Left: Author Info */}
+                                    <div className="flex-1 pb-2 pointer-events-auto">
+                                        <Link 
+                                            to={`/profile/${reel.author.username}`}
+                                            className="flex items-center gap-3 mb-3 group/author"
+                                        >
+                                            <img
+                                                src={reel.author.avatar_url || `https://ui-avatars.com/api/?name=${reel.author.username}&background=4F46E5&color=fff`}
+                                                alt={reel.author.username}
+                                                className="w-10 h-10 rounded-full border-2 border-white/50 group-hover/author:border-white transition-colors"
+                                            />
+                                            <span className="font-semibold text-white text-shadow-lg">
+                                                {reel.author.display_name || reel.author.username}
+                                            </span>
+                                        </Link>
+                                        {reel.caption && (
+                                            <p className="text-white text-sm text-shadow-md line-clamp-2 max-w-[280px]">
+                                                {reel.caption}
+                                            </p>
+                                        )}
+                                        <p className="text-white/60 text-xs mt-1">
+                                            {formatDistanceToNow(new Date(reel.created_at), { addSuffix: true })}
+                                        </p>
+                                    </div>
 
-                            {/* Right: Action Buttons */}
-                            <div className="action-buttons absolute bottom-4 right-4 flex flex-col gap-5 items-center pointer-events-auto">
-                                {/* Like */}
-                                <button
-                                    onClick={() => toggleLike(reel.id)}
-                                    className="flex flex-col items-center"
-                                >
-                                    <Heart
-                                        className={`w-8 h-8 ${reel.is_liked ? 'text-red-500 fill-red-500' : 'text-white'}`}
-                                    />
-                                    <span className="text-white text-xs mt-1">{reel.likes_count || 0}</span>
-                                </button>
+                                    {/* Right Side: Action Buttons */}
+                                    <div className="action-buttons flex flex-col gap-6 items-center pointer-events-auto">
+                                        {/* Like */}
+                                        <button
+                                            onClick={() => toggleLike(reel.id)}
+                                            className="flex flex-col items-center group/btn"
+                                        >
+                                            <div className="p-2.5 bg-black/20 backdrop-blur-md rounded-full group-hover/btn:bg-black/40 transition-all">
+                                                <Heart
+                                                    className={`w-7 h-7 transition-transform group-active/btn:scale-125 ${reel.is_liked ? 'text-red-500 fill-red-500' : 'text-white'}`}
+                                                />
+                                            </div>
+                                            <span className="text-white text-xs font-medium mt-1 text-shadow">{reel.likes_count || 0}</span>
+                                        </button>
 
-                                {/* Comments */}
-                                <button className="flex flex-col items-center">
-                                    <MessageCircle className="w-8 h-8 text-white" />
-                                    <span className="text-white text-xs mt-1">{reel.comments_count || 0}</span>
-                                </button>
+                                        {/* Comments */}
+                                        <button className="flex flex-col items-center group/btn">
+                                            <div className="p-2.5 bg-black/20 backdrop-blur-md rounded-full group-hover/btn:bg-black/40 transition-all">
+                                                <MessageCircle className="w-7 h-7 text-white" />
+                                            </div>
+                                            <span className="text-white text-xs font-medium mt-1 text-shadow">{reel.comments_count || 0}</span>
+                                        </button>
 
-                                {/* Share */}
-                                <button className="flex flex-col items-center">
-                                    <Share2 className="w-8 h-8 text-white" />
-                                    <span className="text-white text-xs mt-1">Share</span>
-                                </button>
+                                        {/* Share */}
+                                        <button className="flex flex-col items-center group/btn">
+                                            <div className="p-2.5 bg-black/20 backdrop-blur-md rounded-full group-hover/btn:bg-black/40 transition-all">
+                                                <Share2 className="w-7 h-7 text-white" />
+                                            </div>
+                                            <span className="text-white text-xs font-medium mt-1 text-shadow">Share</span>
+                                        </button>
 
-                                {/* Mute */}
-                                <button
-                                    onClick={() => setIsMuted(!isMuted)}
-                                    className="p-2 bg-black/30 rounded-full"
-                                >
-                                    {isMuted ? (
-                                        <VolumeX className="w-6 h-6 text-white" />
-                                    ) : (
-                                        <Volume2 className="w-6 h-6 text-white" />
-                                    )}
-                                </button>
+                                        {/* Mute - Floating icon inside video */}
+                                        <button
+                                            onClick={() => setIsMuted(!isMuted)}
+                                            className="p-2.5 bg-black/20 backdrop-blur-md rounded-full hover:bg-black/40 transition-all"
+                                        >
+                                            {isMuted ? (
+                                                <VolumeX className="w-6 h-6 text-white" />
+                                            ) : (
+                                                <Volume2 className="w-6 h-6 text-white" />
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

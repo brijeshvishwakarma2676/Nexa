@@ -38,7 +38,7 @@ export default function Users() {
     }, [query])
 
     return (
-        <div className="max-w-6xl mx-auto py-4 px-2 sm:px-4 pb-20 lg:pb-4">
+        <div className="max-w-6xl mx-auto py-4 px-2 sm:px-4 pt-14 pb-20 lg:pb-4">
             {/* Header with Search */}
             <div className="card mb-6">
                 <div className="p-4 sm:p-6">

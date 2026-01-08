@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 import { useEffect } from 'react'
 import Navbar from './Navbar'
 import Sidebar from './Sidebar'
@@ -11,6 +11,7 @@ import { Toaster } from 'react-hot-toast'
 function Layout() {
   const { connectWebSocket, disconnectWebSocket } = useChatStore()
   const { fetchUnreadCount } = useNotificationStore()
+  const location = useLocation()
 
   useEffect(() => {
     // Connect WebSocket on mount
@@ -28,19 +29,20 @@ function Layout() {
     }
   }, [connectWebSocket, disconnectWebSocket, fetchUnreadCount])
 
+  const isReelsPage = location.pathname === '/reels'
+
   return (
     <div className="min-h-screen bg-(--color-bg)">
       <Toaster position="top-right" />
       {/* Top Navigation */}
       <Navbar />
 
-      {/* Main Content Area */}
-      <div className="flex pt-16">
-        {/* Left Sidebar */}
-        {/* <Sidebar /> */}
+      <div className="flex">
+        {/* Left Sidebar - Hidden on mobile, shown on desktop (except for Reels) */}
+        {!isReelsPage && <Sidebar />}
 
-        {/* Main Content - No padding, each page handles its own */}
-        <main className="flex-1 min-h-[calc(100vh-4rem)]">
+        {/* Main Content Area - No padding, each page handles its own spacing */}
+        <main className={`flex-1 min-h-screen ${!isReelsPage ? 'lg:pl-72' : ''}`}>
           <Outlet />
         </main>
       </div>

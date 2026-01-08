@@ -31,7 +31,7 @@ export default function FindUsers() {
   }, [query, searchUsers, clearSearch])
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto px-4 pt-14 pb-20 lg:pb-4">
       <div className="card">
         {/* Header */}
         <div className="p-4 border-b border-(--color-border)">

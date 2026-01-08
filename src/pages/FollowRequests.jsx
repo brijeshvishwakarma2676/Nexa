@@ -68,7 +68,7 @@ export default function FollowRequests() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto px-4 pt-14 pb-20 lg:pb-4">
       <div className="card">
         {/* Tabs */}
         <div className="flex border-b border-(--color-border)">
@@ -104,7 +104,7 @@ export default function FollowRequests() {
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-[var(--color-border)]">
+            <div className="divide-y divide-(--color-border)">
               {incomingRequests.map((request) => (
                 <div key={request.id} className="p-4 flex items-center gap-4">
                   <img
@@ -167,7 +167,7 @@ export default function FollowRequests() {
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-[var(--color-border)]">
+            <div className="divide-y divide-(--color-border)">
               {sentRequests.map((request) => (
                 <div key={request.id} className="p-4 flex items-center gap-4">
                   <img
