@@ -15,9 +15,11 @@ export default function Chat() {
     messages,
     isLoadingConversations,
     isLoadingMessages,
+    hasMore,
     typingUsers,
     fetchConversations,
     selectConversation,
+    fetchMessages,
     sendMessage,
     sendTyping,
     isUserOnline,
@@ -25,8 +27,11 @@ export default function Chat() {
 
   const [newMessage, setNewMessage] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [isLoadingOlder, setIsLoadingOlder] = useState(false)
   const messagesEndRef = useRef(null)
+  const messagesContainerRef = useRef(null)
   const typingTimeoutRef = useRef(null)
+  const previousScrollHeightRef = useRef(0)
 
   // Fetch conversations on mount
   useEffect(() => {
@@ -38,12 +43,42 @@ export default function Chat() {
     if (conversationId && conversations.length > 0) {
       selectConversation(parseInt(conversationId))
     }
-  }, [conversationId, selectConversation]) // Removed conversations to prevent re-fetch loop
+  }, [conversationId, selectConversation])
 
-  // Scroll to bottom on new messages
+  // Scroll to bottom on initial load or new messages (but not when loading older)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+    if (!isLoadingOlder && messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [messages.length, isLoadingOlder])
+
+  // Load older messages when scrolling to top
+  const handleScroll = async () => {
+    const container = messagesContainerRef.current
+    if (!container || isLoadingMessages || isLoadingOlder || !hasMore) return
+
+    // Check if scrolled to top (within 50px)
+    if (container.scrollTop < 50) {
+      setIsLoadingOlder(true)
+      previousScrollHeightRef.current = container.scrollHeight
+
+      // Get oldest message's timestamp as cursor
+      const oldestMessage = messages[0]
+      if (oldestMessage && currentConversation) {
+        await fetchMessages(currentConversation.id, oldestMessage.created_at)
+        
+        // Preserve scroll position after loading
+        setTimeout(() => {
+          const newScrollHeight = container.scrollHeight
+          const scrollDiff = newScrollHeight - previousScrollHeightRef.current
+          container.scrollTop = scrollDiff
+          setIsLoadingOlder(false)
+        }, 100)
+      } else {
+        setIsLoadingOlder(false)
+      }
+    }
+  }
 
   // Handle typing indicator
   const handleTyping = () => {
@@ -198,7 +233,18 @@ export default function Chat() {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div 
+              ref={messagesContainerRef}
+              onScroll={handleScroll}
+              className="flex-1 overflow-y-auto p-4 space-y-4"
+            >
+              {/* Loading older messages indicator */}
+              {isLoadingOlder && (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="w-6 h-6 text-(--color-primary) animate-spin" />
+                </div>
+              )}
+
               {isLoadingMessages ? (
                 <div className="flex justify-center py-8">
                   <Loader2 className="w-8 h-8 text-(--color-primary) animate-spin" />
