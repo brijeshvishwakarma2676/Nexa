@@ -44,11 +44,12 @@ export default function Login() {
     // Render Google button
     const container = document.getElementById('google-btn')
     if (container) {
+      const width = Math.min(320, window.innerWidth - 64)
       window.google.accounts.id.renderButton(container, {
         theme: 'outline',
         size: 'large',
         text: 'continue_with',
-        width: 320
+        width: width
       })
     }
   }
@@ -64,7 +65,7 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-(--color-bg) flex">
+    <div className="min-h-screen bg-(--color-bg) flex overflow-x-hidden">
       {/* Left side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 gradient-primary items-center justify-center p-12">
         <div className="max-w-md text-center text-white">
@@ -79,7 +80,7 @@ export default function Login() {
       </div>
 
       {/* Right side - Login Form */}
-      <div className="flex-1 flex items-center justify-center p-8">
+      <div className="flex-1 flex items-center justify-center px-4 py-8 sm:p-8">
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <div className="lg:hidden text-center mb-8">
@@ -89,7 +90,7 @@ export default function Login() {
             <h1 className="text-2xl font-bold text-(--color-primary)">Nexa</h1>
           </div>
 
-          <div className="card p-8">
+          <div className="card p-6 sm:p-8">
             <h2 className="text-2xl font-bold text-(--color-text-primary) mb-2">
               Welcome back
             </h2>
