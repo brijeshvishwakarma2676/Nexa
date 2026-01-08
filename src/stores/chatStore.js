@@ -5,7 +5,8 @@ export const useChatStore = create((set, get) => ({
   conversations: [],
   currentConversation: null,
   messages: [],
-  isLoading: false,
+  isLoadingConversations: false,
+  isLoadingMessages: false,
   hasMore: false,
   error: null,
 
@@ -17,15 +18,15 @@ export const useChatStore = create((set, get) => ({
 
   // Fetch conversations list
   fetchConversations: async () => {
-    set({ isLoading: true, error: null })
+    set({ isLoadingConversations: true, error: null })
 
     try {
       const response = await api.get('/conversations')
-      set({ conversations: response.data.conversations, isLoading: false })
+      set({ conversations: response.data.conversations, isLoadingConversations: false })
     } catch (error) {
       set({
         error: error.response?.data?.detail || 'Failed to load conversations',
-        isLoading: false
+        isLoadingConversations: false
       })
     }
   },
@@ -55,7 +56,12 @@ export const useChatStore = create((set, get) => ({
   // Select conversation and load messages
   selectConversation: async (conversationId) => {
     const conversation = get().conversations.find((c) => c.id === conversationId)
-    set({ currentConversation: conversation, messages: [], hasMore: false })
+    set({
+      currentConversation: conversation,
+      messages: [],
+      hasMore: false,
+      isLoadingMessages: true // Set loading true immediately to prevent flicker
+    })
 
     if (conversation) {
       await get().fetchMessages(conversationId)
@@ -76,7 +82,7 @@ export const useChatStore = create((set, get) => ({
 
   // Fetch messages for conversation
   fetchMessages: async (conversationId, cursor = null) => {
-    set({ isLoading: true })
+    set({ isLoadingMessages: true })
 
     try {
       const params = { limit: 50 }
@@ -88,10 +94,10 @@ export const useChatStore = create((set, get) => ({
       set((state) => ({
         messages: cursor ? [...messages, ...state.messages] : messages,
         hasMore: has_more,
-        isLoading: false,
+        isLoadingMessages: false,
       }))
     } catch (error) {
-      set({ isLoading: false })
+      set({ isLoadingMessages: false })
       console.error('Failed to load messages:', error)
     }
   },
@@ -298,7 +304,8 @@ export const useChatStore = create((set, get) => ({
       conversations: [],
       currentConversation: null,
       messages: [],
-      isLoading: false,
+      isLoadingConversations: false,
+      isLoadingMessages: false,
       hasMore: false,
       error: null,
       onlineUsers: new Set(),

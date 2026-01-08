@@ -11,6 +11,7 @@ import api from '../services/api'
 import { formatDistanceToNow } from 'date-fns'
 import logo from '../assets/nexa_logo.png'
 import { UserPlus } from 'lucide-react'
+import LogoutModal from './LogoutModal'
 
 export default function Navbar() {
   const navigate = useNavigate()
@@ -24,6 +25,7 @@ export default function Navbar() {
   const [showSearch, setShowSearch] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
+  const [showLogoutModal, setShowLogoutModal] = useState(false)
   const [showSettingsMenu, setShowSettingsMenu] = useState(false)
 
   const searchRef = useRef(null)
@@ -108,6 +110,11 @@ export default function Navbar() {
 
   // Logout
   const handleLogout = () => {
+    setShowLogoutModal(true)
+  }
+
+  const confirmLogout = () => {
+    setShowLogoutModal(false)
     logout()
     navigate('/login')
   }
@@ -520,6 +527,13 @@ export default function Navbar() {
           </div>
         </div>
       </div>
+
+      {/* Logout Confirmation Modal */}
+      <LogoutModal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        onConfirm={confirmLogout}
+      />
     </nav>
   )
 }

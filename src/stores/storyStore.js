@@ -5,6 +5,8 @@ export const useStoryStore = create((set, get) => ({
   storyGroups: [],
   isLoading: false,
   error: null,
+  lastFetchTime: null,
+  CACHE_DURATION: 120 * 1000, // 2 minutes cache
 
   // Currently viewing
   viewerOpen: false,
@@ -12,12 +14,27 @@ export const useStoryStore = create((set, get) => ({
   currentStoryIndex: 0,
 
   // Fetch all stories
-  fetchStories: async () => {
+  fetchStories: async (force = false) => {
+    const { isLoading, lastFetchTime, CACHE_DURATION } = get()
+
+    if (isLoading) return
+
+    if (!force && lastFetchTime) {
+      const timeSinceLastFetch = Date.now() - lastFetchTime
+      if (timeSinceLastFetch < CACHE_DURATION) {
+        return // Use cache
+      }
+    }
+
     set({ isLoading: true, error: null })
 
     try {
       const response = await api.get('/stories')
-      set({ storyGroups: response.data.story_groups, isLoading: false })
+      set({ 
+        storyGroups: response.data.story_groups, 
+        isLoading: false,
+        lastFetchTime: Date.now()
+      })
     } catch (error) {
       set({
         error: error.response?.data?.detail || 'Failed to load stories',

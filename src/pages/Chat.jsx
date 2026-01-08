@@ -13,7 +13,8 @@ export default function Chat() {
     conversations,
     currentConversation,
     messages,
-    isLoading,
+    isLoadingConversations,
+    isLoadingMessages,
     typingUsers,
     fetchConversations,
     selectConversation,
@@ -101,7 +102,11 @@ export default function Chat() {
 
         {/* Conversations */}
         <div className="flex-1 overflow-y-auto">
-          {filteredConversations.length === 0 ? (
+          {isLoadingConversations && conversations.length === 0 ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-6 h-6 text-(--color-primary) animate-spin" />
+            </div>
+          ) : filteredConversations.length === 0 ? (
             <div className="p-8 text-center text-(--color-text-muted)">
               No conversations yet
             </div>
@@ -194,7 +199,7 @@ export default function Chat() {
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {isLoading ? (
+              {isLoadingMessages ? (
                 <div className="flex justify-center py-8">
                   <Loader2 className="w-8 h-8 text-(--color-primary) animate-spin" />
                 </div>

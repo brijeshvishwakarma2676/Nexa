@@ -6,9 +6,22 @@ export const useNotificationStore = create((set, get) => ({
   unreadCount: 0,
   isLoading: false,
   error: null,
+  lastFetchTime: null,
+  CACHE_DURATION: 60 * 1000, // 1 minute cache
 
   // Fetch notifications
-  fetchNotifications: async () => {
+  fetchNotifications: async (force = false) => {
+    const { isLoading, lastFetchTime, CACHE_DURATION } = get()
+
+    if (isLoading) return
+
+    if (!force && lastFetchTime) {
+      const timeSinceLastFetch = Date.now() - lastFetchTime
+      if (timeSinceLastFetch < CACHE_DURATION) {
+        return // Use cache
+      }
+    }
+
     set({ isLoading: true, error: null })
 
     try {
@@ -17,6 +30,7 @@ export const useNotificationStore = create((set, get) => ({
         notifications: response.data.notifications,
         unreadCount: response.data.unread_count,
         isLoading: false,
+        lastFetchTime: Date.now(),
       })
     } catch (error) {
       set({

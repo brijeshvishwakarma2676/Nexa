@@ -13,11 +13,12 @@ export default function Feed() {
 
   const observerRef = useRef(null)
 
-  // Initial load
+  // Initial load - only reset if no posts cached, otherwise let store decide
   useEffect(() => {
-    fetchFeed(true)
+    const shouldReset = posts.length === 0
+    fetchFeed(shouldReset)
     fetchStories()
-  }, [fetchFeed, fetchStories])
+  }, []) // Empty deps - only run on mount
 
   // Infinite scroll observer
   const lastPostRef = useCallback(
