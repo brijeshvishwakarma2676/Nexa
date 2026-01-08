@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Mail, Lock, User, Eye, EyeOff, Loader2, ArrowLeft, Calendar, ChevronDown } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { useAuthStore } from '../stores/authStore'
 
 const GOOGLE_CLIENT_ID = '75355985562-3jkt7pgrcegteani3r0hflob6e8famaa.apps.googleusercontent.com'
@@ -20,7 +21,6 @@ export default function Register() {
   // Flow state: 'local' or 'google'
   const [flow, setFlow] = useState('local')
   const [step, setStep] = useState(1)
-  const [localError, setLocalError] = useState('')
 
   // Form data
   const [formData, setFormData] = useState({
@@ -99,6 +99,7 @@ export default function Register() {
     if (result.success) {
       if (!result.isNewUser) {
         // Existing user - already logged in
+        toast.success('Welcome back!')
         navigate('/')
       } else {
         // New user - switch to Google flow
@@ -115,21 +116,21 @@ export default function Register() {
     }
   }
 
+
   // Email validation and availability check
   const handleEmailNext = async () => {
-    setLocalError('')
     if (!formData.email) {
-      setLocalError('Email is required')
+      toast.error('Email is required')
       return
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      setLocalError('Please enter a valid email')
+      toast.error('Please enter a valid email')
       return
     }
 
     const result = await checkEmail(formData.email)
     if (!result.available) {
-      setLocalError('This email is already registered. Try logging in.')
+      toast.error('This email is already registered. Try logging in.')
       return
     }
     setEmailAvailable(true)
@@ -138,15 +139,14 @@ export default function Register() {
 
   // Birthday validation
   const handleBirthdayNext = () => {
-    setLocalError('')
     const { month, day, year } = formData.birthday
     if (!month || !day || !year) {
-      setLocalError('Please enter your full birthday')
+      toast.error('Please enter your full birthday')
       return
     }
     const age = calculateAge(formData.birthday)
     if (age < 13) {
-      setLocalError('You must be at least 13 years old to create an account')
+      toast.error('You must be at least 13 years old to create an account')
       return
     }
     setStep(3)
@@ -154,13 +154,12 @@ export default function Register() {
 
   // Name & Password validation
   const handleNamePasswordNext = () => {
-    setLocalError('')
     if (!formData.displayName.trim()) {
-      setLocalError('Please enter your name')
+      toast.error('Please enter your name')
       return
     }
     if (flow === 'local' && formData.password.length < 6) {
-      setLocalError('Password must be at least 6 characters')
+      toast.error('Password must be at least 6 characters')
       return
     }
     setStep(4)
@@ -188,16 +187,15 @@ export default function Register() {
 
   // Final signup
   const handleSignup = async () => {
-    setLocalError('')
     clearError()
 
     if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
-      setLocalError('Username can only contain letters, numbers, and underscores')
+      toast.error('Username can only contain letters, numbers, and underscores')
       return
     }
 
     if (usernameAvailable === false) {
-      setLocalError('This username is taken. Please choose another.')
+      toast.error('This username is taken. Please choose another.')
       return
     }
 
@@ -212,7 +210,10 @@ export default function Register() {
         birthday
       )
       if (result.success) {
+        toast.success('Account created successfully!')
         navigate('/')
+      } else {
+        toast.error(result.error || 'Registration failed')
       }
     } else {
       const result = await googleSignup(
@@ -221,7 +222,10 @@ export default function Register() {
         formData.username
       )
       if (result.success) {
+        toast.success('Account created successfully!')
         navigate('/')
+      } else {
+        toast.error(result.error || 'Registration failed')
       }
     }
   }
@@ -229,11 +233,8 @@ export default function Register() {
   const goBack = () => {
     if (step > 1) {
       setStep(step - 1)
-      setLocalError('')
     }
   }
-
-  const displayError = localError || error
 
   // Determine total steps based on flow
   const totalSteps = flow === 'local' ? 4 : 3
@@ -284,12 +285,6 @@ export default function Register() {
               </div>
               {step > 1 && <div className="w-9" />}
             </div>
-
-            {displayError && (
-              <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm">
-                {displayError}
-              </div>
-            )}
 
             {/* Step 1: Email */}
             {step === 1 && flow === 'local' && (

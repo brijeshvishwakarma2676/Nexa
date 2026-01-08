@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { useAuthStore } from '../stores/authStore'
 
 const GOOGLE_CLIENT_ID = '75355985562-3jkt7pgrcegteani3r0hflob6e8famaa.apps.googleusercontent.com'
 
 export default function Login() {
   const navigate = useNavigate()
-  const { login, googleLogin, isLoading, error, clearError } = useAuthStore()
+  const { login, googleVerify, isLoading, error, clearError } = useAuthStore()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -34,9 +35,16 @@ export default function Login() {
     window.google.accounts.id.initialize({
       client_id: GOOGLE_CLIENT_ID,
       callback: async (response) => {
-        const result = await googleLogin(response.credential)
+        const result = await googleVerify(response.credential)
         if (result.success) {
-          navigate('/')
+          if (!result.isNewUser) {
+            // Existing user - log them in
+            toast.success('Welcome back!')
+            navigate('/')
+          } else {
+            // New user - redirect to registration to complete profile
+            toast.error('No account found. Please sign up first.')
+          }
         }
       }
     })
@@ -60,7 +68,10 @@ export default function Login() {
 
     const result = await login(email, password)
     if (result.success) {
+      toast.success('Welcome back!')
       navigate('/')
+    } else {
+      toast.error(result.error || 'Login failed')
     }
   }
 
@@ -97,12 +108,6 @@ export default function Login() {
             <p className="text-(--color-text-muted) mb-6">
               Sign in to continue to your account
             </p>
-
-            {error && (
-              <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm">
-                {error}
-              </div>
-            )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Email */}
