@@ -31,6 +31,12 @@
 - **Edge Highlights**: Neon purple borders and corner accents
 - **Processing Overlay**: Shows "Processing Story..." during capture/upload
 
+### 3. Adaptive & Glassy Post Layout
+
+- **Smart Image Container**: Posts and Modals now intelligently handle any aspect ratio without cropping.
+- **Frosted Glass Style**: Consistent semi-transparent, high-blur background (`backdrop-blur-2xl`) across feed and detail views.
+- **Responsive Modal**: `PostModal.jsx` is now fully optimized for mobile, featuring an internal floating close button and balanced content splitting for small screens.
+
 ### 2. Story Viewer Improvements (Partially Working)
 
 - **Loading State**: `isLoading` state pauses timer while images load

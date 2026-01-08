@@ -225,14 +225,42 @@ export default function Post({ post }) {
         </div>
       )}
 
-      {/* Image */}
+      {/* Glassy Adaptive Image Container */}
       {post.image_url && (
-        <div className="border-t border-(--color-border) cursor-pointer" onClick={() => setShowModal(true)}>
-          <img
-            src={post.image_url}
-            alt="Post image"
-            className="w-full max-h-[600px] object-cover hover:opacity-95 transition-opacity"
-          />
+        <div 
+          className="relative border-y border-(--color-border) cursor-pointer overflow-hidden group bg-zinc-50/50 flex items-center justify-center" 
+          onClick={() => setShowModal(true)}
+          style={{ minHeight: '200px' }}
+        >
+          {/* Frosted Glass Background Layer */}
+          <div className="absolute inset-0 z-0">
+            <img 
+              src={post.image_url} 
+              alt=""
+              className="w-full h-full object-cover blur-3xl opacity-20 scale-125"
+            />
+            <div className="absolute inset-0 bg-white/40 backdrop-blur-2xl" />
+          </div>
+
+          {/* Floating Image Stage */}
+          <div className="relative z-10 flex justify-center items-center w-full h-full max-h-[600px]">
+            <div className="relative shadow-[0_10px_40px_rgba(0,0,0,0.1)] transition-transform duration-500 group-hover:scale-[1.01]">
+              <img
+                src={post.image_url}
+                alt="Post content"
+                className="max-h-[580px] w-auto h-auto object-contain rounded-sm block ring-1 ring-white ring-offset-1 ring-offset-zinc-200/20 shadow-sm"
+                loading="lazy"
+              />
+              
+              {/* Soft Light Overlay */}
+              <div className="absolute inset-0 bg-white/5 pointer-events-none" />
+            </div>
+          </div>
+
+          {/* Glass Expansion Indicator */}
+          <div className="absolute bottom-4 right-4 z-20 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0 bg-white/60 backdrop-blur-md border border-white/40 p-2.5 rounded-2xl text-(--color-text-primary) shadow-xl">
+            <Share2 className="w-4 h-4 opacity-70" />
+          </div>
         </div>
       )}
 
