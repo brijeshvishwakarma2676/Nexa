@@ -119,8 +119,13 @@ export default function Navbar() {
     navigate('/login')
   }
 
+  const isReels = location.pathname === '/reels'
+
   return (
-    <nav className="fixed top-0 left-0 right-0 h-14 bg-white border-b border-(--color-border) z-50 shadow-sm">
+    <nav className={`fixed top-0 left-0 right-0 h-14 z-50 transition-all duration-300 ${isReels
+      ? 'bg-black border-b border-white/10 shadow-none'
+      : 'bg-white border-b border-(--color-border) shadow-sm'
+      }`}>
       <div className="h-full max-w-[1920px] mx-auto px-4 flex lg:items-center justify-between lg:gap-4">
         {/* Left: Logo + Search */}
         <div className="flex items-center gap-2 w-[280px]">
@@ -133,29 +138,38 @@ export default function Navbar() {
           {/* Search */}
           <div className="relative flex-1" ref={searchRef}>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-(--color-text-muted)" />
+              <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 ${isReels ? 'text-white/70' : 'text-(--color-text-muted)'
+                }`} />
               <input
                 type="text"
                 placeholder="Search Nexa"
                 value={searchQuery}
                 onChange={(e) => handleSearch(e.target.value)}
                 onFocus={() => searchQuery.length >= 2 && setShowSearch(true)}
-                className="w-full pl-10 pr-4 py-2 rounded-full bg-(--color-bg) text-sm focus:ring-2 focus:ring-(--color-primary) focus:bg-white transition-all border border-(--color-border)"
+                className={`w-full pl-10 pr-4 py-2 rounded-full text-sm focus:ring-2 focus:ring-(--color-primary) transition-all border ${isReels
+                  ? 'bg-white/10 text-white placeholder:text-white/50 border-white/20 focus:bg-white/20'
+                  : 'bg-(--color-bg) text-(--color-text-primary) border-(--color-border) focus:bg-white'
+                  }`}
               />
             </div>
 
             {/* Search Results Dropdown */}
             {showSearch && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-lg border border-(--color-border) py-2 max-h-[600px] w-[280px] overflow-y-auto animate-fadeIn">
+              <div className={`absolute top-full left-0 right-0 mt-2 rounded-lg shadow-lg py-2 max-h-[600px] w-[280px] overflow-y-auto animate-fadeIn border ${isReels
+                ? 'bg-neutral-900 border-white/10 text-white'
+                : 'bg-white border-(--color-border) text-(--color-text-primary)'
+                }`}>
                 {/* Header with back button */}
-                <div className="flex items-center gap-2 px-3 pb-2 border-b border-(--color-border)">
+                <div className={`flex items-center gap-2 px-3 pb-2 border-b ${isReels ? 'border-white/10' : 'border-(--color-border)'
+                  }`}>
                   <button
                     onClick={clearSearch}
-                    className="p-2 rounded-full hover:bg-(--color-bg) transition-colors"
+                    className={`p-2 rounded-full transition-colors ${isReels ? 'hover:bg-white/10' : 'hover:bg-(--color-bg)'
+                      }`}
                   >
-                    <ArrowLeft className="w-5 h-5 text-(--color-text-secondary)" />
+                    <ArrowLeft className={`w-5 h-5 ${isReels ? 'text-white/70' : 'text-(--color-text-secondary)'}`} />
                   </button>
-                  <span className="text-sm text-(--color-text-muted)">{searchQuery}</span>
+                  <span className={`text-sm ${isReels ? 'text-white/70' : 'text-(--color-text-muted)'}`}>{searchQuery}</span>
                 </div>
 
                 {(!Array.isArray(searchResults) || searchResults.length === 0) ? (
@@ -168,7 +182,8 @@ export default function Navbar() {
                       key={result.id}
                       to={`/profile/${result.username}`}
                       onClick={clearSearch}
-                      className="flex items-center gap-3 px-4 py-2 hover:bg-(--color-bg) transition-colors"
+                      className={`flex items-center gap-3 px-4 py-2 transition-colors ${isReels ? 'hover:bg-white/5' : 'hover:bg-(--color-bg)'
+                        }`}
                     >
                       <img
                         src={result.avatar_url || `https://ui-avatars.com/api/?name=${result.username}&background=4F46E5&color=fff`}
@@ -176,10 +191,10 @@ export default function Navbar() {
                         className="w-9 h-9 rounded-full"
                       />
                       <div>
-                        <p className="font-semibold text-(--color-text-primary) text-sm">
+                        <p className={`font-semibold text-sm ${isReels ? 'text-white' : 'text-(--color-text-primary)'}`}>
                           {result.display_name || result.username}
                         </p>
-                        <p className="text-xs text-(--color-text-muted)">
+                        <p className={`text-xs ${isReels ? 'text-white/50' : 'text-(--color-text-muted)'}`}>
                           {result.relationship_status || 'User'}
                         </p>
                       </div>
@@ -203,7 +218,7 @@ export default function Navbar() {
                   to={item.path}
                   className={`relative px-8 py-2 rounded-lg transition-colors group ${isActive
                     ? 'text-(--color-primary)'
-                    : 'text-(--color-text-muted) hover:bg-(--color-bg)'
+                    : isReels ? 'text-white/70 hover:bg-white/10' : 'text-(--color-text-muted) hover:bg-(--color-bg)'
                     }`}
                   title={item.label}
                 >
@@ -221,16 +236,16 @@ export default function Navbar() {
         {/* Right: Actions */}
         <div className="flex items-center gap-1 w-[280px] justify-end">
           {/* Menu Grid */}
-          <button className="p-2.5 rounded-full bg-(--color-bg) hover:bg-gray-200 transition-colors">
-            <Grid3X3 className="w-5 h-5 text-(--color-text-primary)" />
+          <button className={`p-2.5 rounded-full transition-colors ${isReels ? 'bg-white/10 hover:bg-white/20' : 'bg-(--color-bg) hover:bg-gray-200'}`}>
+            <Grid3X3 className={`w-5 h-5 ${isReels ? 'text-white' : 'text-(--color-text-primary)'}`} />
           </button>
 
           {/* Messages */}
           <Link
             to="/chat"
-            className="relative p-2.5 rounded-full bg-(--color-bg) hover:bg-gray-200 transition-colors"
+            className={`relative p-2.5 rounded-full transition-colors ${isReels ? 'bg-white/10 hover:bg-white/20' : 'bg-(--color-bg) hover:bg-gray-200'}`}
           >
-            <MessageCircle className="w-5 h-5 text-(--color-text-primary)" />
+            <MessageCircle className={`w-5 h-5 ${isReels ? 'text-white' : 'text-(--color-text-primary)'}`} />
             {unreadMessages > 0 && (
               <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold text-white bg-red-500 rounded-full px-1">
                 {unreadMessages > 99 ? '99+' : unreadMessages}
@@ -242,9 +257,9 @@ export default function Navbar() {
           <div className="relative" ref={notifRef}>
             <button
               onClick={handleOpenNotifications}
-              className="relative p-2.5 rounded-full bg-(--color-bg) hover:bg-gray-200 transition-colors"
+              className={`relative p-2.5 rounded-full transition-colors ${isReels ? 'bg-white/10 hover:bg-white/20' : 'bg-(--color-bg) hover:bg-gray-200'}`}
             >
-              <Bell className="w-5 h-5 text-(--color-text-primary)" />
+              <Bell className={`w-5 h-5 ${isReels ? 'text-white' : 'text-(--color-text-primary)'}`} />
               {unreadCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold text-white bg-red-500 rounded-full px-1">
                   {unreadCount > 99 ? '99+' : unreadCount}
@@ -254,9 +269,12 @@ export default function Navbar() {
 
             {/* Notifications Dropdown */}
             {showNotifications && (
-              <div className="absolute top-full right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-(--color-border) py-2 max-h-96 overflow-y-auto animate-fadeIn">
-                <div className="flex items-center justify-between px-4 py-2 border-b border-(--color-border)">
-                  <h3 className="font-bold text-xl">Notifications</h3>
+              <div className={`absolute top-full right-0 mt-2 w-80 rounded-lg shadow-lg py-2 max-h-96 overflow-y-auto animate-fadeIn border ${isReels
+                ? 'bg-neutral-900 border-white/10'
+                : 'bg-white border-(--color-border)'
+                }`}>
+                <div className={`flex items-center justify-between px-4 py-2 border-b ${isReels ? 'border-white/10' : 'border-(--color-border)'}`}>
+                  <h3 className={`font-bold text-xl ${isReels ? 'text-white' : ''}`}>Notifications</h3>
                   {unreadCount > 0 && (
                     <button
                       onClick={markAllAsRead}
@@ -281,7 +299,7 @@ export default function Navbar() {
                       <button
                         key={notification.id}
                         onClick={() => handleNotificationClick(notification)}
-                        className={`w-full flex items-start gap-3 px-4 py-3 hover:bg-(--color-bg) transition-colors text-left ${!notification.read ? 'bg-(--color-primary-light)' : ''
+                        className={`w-full flex items-start gap-3 px-4 py-3 transition-colors text-left ${!notification.read ? (isReels ? 'bg-white/5' : 'bg-(--color-primary-light)') : (isReels ? 'hover:bg-white/5' : 'hover:bg-(--color-bg)')
                           }`}
                       >
                         <img
@@ -290,10 +308,10 @@ export default function Navbar() {
                           className="w-10 h-10 rounded-full shrink-0"
                         />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm text-(--color-text-primary)">
+                          <p className={`text-sm ${isReels ? 'text-white' : 'text-(--color-text-primary)'}`}>
                             {notification.message}
                           </p>
-                          <p className="text-xs text-(--color-text-muted) mt-1">
+                          <p className={`text-xs mt-1 ${isReels ? 'text-white/50' : 'text-(--color-text-muted)'}`}>
                             {formatTimeAgo(notification.created_at)}
                           </p>
                         </div>

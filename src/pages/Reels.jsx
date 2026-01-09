@@ -157,7 +157,7 @@ export default function Reels() {
     }
 
     return (
-        <div className="fixed inset-x-0 top-[56px] bottom-[64px] lg:bottom-0 bg-black overflow-hidden flex flex-col z-40">
+        <div className="fixed inset-x-0 top-[56px] bottom-[64px] lg:bottom-0 bg-neutral-900 overflow-hidden flex flex-col z-40">
             {/* Create Button */}
             <button
                 onClick={() => setShowCreateModal(true)}

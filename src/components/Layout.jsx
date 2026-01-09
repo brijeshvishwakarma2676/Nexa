@@ -33,12 +33,12 @@ function Layout() {
   const isChatPage = location.pathname.startsWith('/chat')
 
   return (
-    <div className="min-h-screen bg-(--color-bg)">
+    <div className={`min-h-screen ${isReelsPage ? 'bg-black' : 'bg-(--color-bg)'}`}>
       <Toaster position="top-right" />
-      {/* Top Navigation - Always shown except Reels (or as per design) */}
-      {!isReelsPage && <Navbar />}
+      {/* Top Navigation - Shown on Reels with dark theme */}
+      <Navbar />
 
-      <div className={`flex ${!isChatPage && !isReelsPage ? 'mt-3' : ''}`}>
+      <div className={`flex ${(!isChatPage && !isReelsPage) ? 'mt-3' : ''}`}>
         {/* Left Sidebar - Hidden on mobile, shown on desktop (except for Reels and Chat) */}
         {!isReelsPage && !isChatPage && <Sidebar />}
 
@@ -48,8 +48,8 @@ function Layout() {
         </main>
       </div>
 
-      {/* Mobile Bottom Navigation - Visible on chat as requested */}
-      {!isReelsPage && <MobileNavBar />}
+      {/* Mobile Bottom Navigation - Visible on Reels with dark theme */}
+      <MobileNavBar />
 
       {/* PWA Install Prompt */}
       {!isReelsPage && <InstallPrompt />}
