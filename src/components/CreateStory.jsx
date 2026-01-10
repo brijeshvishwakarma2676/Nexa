@@ -71,7 +71,6 @@ export default function CreateStory({ isOpen, onClose }) {
     const layerFileInputRef = useRef(null)
     const editInputRef = useRef(null)
     const cropImageRef = useRef(null)
-    const resizeStartRef = useRef(null)
 
     // Crop state
     const [croppingLayerId, setCroppingLayerId] = useState(null)
@@ -594,11 +593,11 @@ export default function CreateStory({ isOpen, onClose }) {
                                 container={containerRef.current}
                                 draggable={true}
                                 throttleDrag={0}
-                                resizable={selectedLayer?.type === 'text' ? false : (selectedLayerId === 'background' ? false : true)}
-                                scalable={selectedLayer?.type === 'text' ? { directions: ['nw', 'ne', 'sw', 'se', 'e', 'w'] } : (selectedLayer?.type === 'image' || selectedLayerId === 'background' ? true : false)}
+                                resizable={selectedLayer?.type === 'text' ? { directions: ['e', 'w'] } : (selectedLayerId === 'background' ? false : true)}
+                                scalable={selectedLayer?.type === 'text' ? { directions: ['nw', 'ne', 'sw', 'se'] } : (selectedLayer?.type === 'image' || selectedLayerId === 'background' ? true : false)}
                                 rotatable={true}
                                 origin={['50%', '0%']}
-                                keepRatio={false}
+                                keepRatio={selectedLayer?.type === 'image' || selectedLayerId === 'background'}
                                 renderDirections={selectedLayer?.type === 'text' ? ['nw', 'ne', 'sw', 'se', 'e', 'w'] : ['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se']}
                                 
                                 // Coordinate Adjustment
@@ -639,39 +638,22 @@ export default function CreateStory({ isOpen, onClose }) {
                                     }
                                     const layer = layers.find(l => l.id === selectedLayerId)
                                     if (layer) {
-                                        // Store starting state for centered expansion
-                                        resizeStartRef.current = {
-                                            width: layer.width || 600,
-                                            translate: [...layer.translate]
-                                        }
                                         e.dragStart && e.dragStart.set(layer.translate)
                                     } else if (selectedLayerId === 'background') {
                                         e.dragStart && e.dragStart.set(bgTransform.translate)
                                     }
                                 }}
                                 onResize={e => {
-                                    if (selectedLayer?.type === 'text' && resizeStartRef.current) {
-                                        // Centered expansion for text (like Instagram)
-                                        const { width: startWidth, translate: startTranslate } = resizeStartRef.current;
-                                        const deltaWidth = e.width - startWidth;
-                                        const newX = startTranslate[0] - (deltaWidth / 2);
-                                        
-                                        e.target.style.width = `${e.width}px`
-                                        const newTranslate = [newX, startTranslate[1]];
-
-                                        const layer = layers.find(l => l.id === selectedLayerId);
-                                        if (layer) {
-                                            e.target.style.transform = `translate(${newX}px, ${newTranslate[1]}px) rotate(${layer.rotate}deg) scale(${layer.scale[0]}, ${layer.scale[1]})`
-                                        }
-                                        
+                                    e.target.style.width = `${e.width}px`
+                                    e.target.style.height = `${e.height}px`
+                                    e.target.style.transform = e.drag.transform
+                                    
+                                    if (selectedLayer?.type === 'text') {
                                         updateLayer(selectedLayerId, {
                                             width: e.width,
-                                            translate: newTranslate
+                                            translate: e.drag.beforeTranslate
                                         })
                                     } else {
-                                        e.target.style.width = `${e.width}px`
-                                        e.target.style.height = `${e.height}px`
-                                        e.target.style.transform = e.drag.transform
                                         updateLayer(selectedLayerId, {
                                             width: e.width,
                                             height: e.height,
@@ -681,17 +663,6 @@ export default function CreateStory({ isOpen, onClose }) {
                                 }}
 
                                 onScaleStart={e => {
-                                    // Set starting values for this scale operation
-                                    if (selectedLayer?.type === 'text') {
-                                        const layer = layers.find(l => l.id === selectedLayerId)
-                                        if (layer) {
-                                            resizeStartRef.current = {
-                                                width: layer.width || 600,
-                                                translate: [...layer.translate],
-                                                scale: [...layer.scale]
-                                            }
-                                        }
-                                    }
                                     if (selectedLayerId === 'background') {
                                         e.set(bgTransform.scale)
                                     } else {
@@ -700,54 +671,19 @@ export default function CreateStory({ isOpen, onClose }) {
                                     }
                                 }}
                                 onScale={e => {
-                                    // For text: detect if it's side handle (width change) vs corner (scale change)
-                                    if (selectedLayer?.type === 'text') {
-                                        const isHorizontalSide = e.direction[0] !== 0 && e.direction[1] === 0 // E or W
-                                        
-                                        if (isHorizontalSide) {
-                                            // Side handles: Change width only (like resize)
-                                            // resizeStartRef is set in onScaleStart
-                                            if (resizeStartRef.current) {
-                                                const { width: startWidth, translate: startTranslate, scale: startScale } = resizeStartRef.current
-                                                const newWidth = startWidth * e.scale[0]
-                                                const deltaWidth = newWidth - startWidth
-                                                const newX = startTranslate[0] - (deltaWidth / 2)
-                                                const newTranslate = [newX, startTranslate[1]]
-                                                
-                                                e.target.style.width = `${newWidth}px`
-                                                e.target.style.transform = `translate(${newX}px, ${newTranslate[1]}px) rotate(${selectedLayer.rotate}deg) scale(${startScale[0]}, ${startScale[1]})`
-                                                
-                                                updateLayer(selectedLayerId, {
-                                                    width: newWidth,
-                                                    translate: newTranslate
-                                                })
-                                            }
-                                        } else {
-                                            // Corner handles: Proportional scaling
-                                            const finalScale = [Math.max(e.scale[0], e.scale[1]), Math.max(e.scale[0], e.scale[1])]
-                                            e.target.style.transform = e.drag.transform
-                                            updateLayer(selectedLayerId, { scale: finalScale, translate: e.drag.beforeTranslate })
-                                        }
-                                    } else {
-                                        // Non-text layers: normal scaling
-                                        const finalScale = selectedLayer?.type === 'text'
-                                            ? [Math.max(e.scale[0], e.scale[1]), Math.max(e.scale[0], e.scale[1])]
-                                            : e.scale
+                                    // Enforce proportional scaling for text
+                                    const finalScale = selectedLayer?.type === 'text'
+                                        ? [Math.max(e.scale[0], e.scale[1]), Math.max(e.scale[0], e.scale[1])]
+                                        : e.scale;
 
-                                        e.target.style.transform = e.drag.transform
-                                        if (selectedLayerId === 'background') {
-                                            setBgTransform(prev => ({ ...prev, scale: finalScale, translate: e.drag.beforeTranslate }))
-                                        } else {
-                                            updateLayer(selectedLayerId, { scale: finalScale, translate: e.drag.beforeTranslate })
-                                        }
+                                    e.target.style.transform = e.drag.transform
+                                    if (selectedLayerId === 'background') {
+                                        setBgTransform(prev => ({ ...prev, scale: finalScale, translate: e.drag.beforeTranslate }))
+                                    } else {
+                                        updateLayer(selectedLayerId, { scale: finalScale, translate: e.drag.beforeTranslate })
                                     }
                                 }}
-                                onScaleEnd={e => {
-                                    // Clear resize start ref when scaling ends
-                                    if (selectedLayer?.type === 'text') {
-                                        resizeStartRef.current = null
-                                    }
-                                }}
+                                onScaleEnd={e => {}}
 
                                 onRotateStart={e => {
                                     if (selectedLayerId === 'background') {
