@@ -4,6 +4,7 @@ import api from '../services/api'
 export const useStoryStore = create((set, get) => ({
   storyGroups: [],
   isLoading: false,
+  isUploading: false,
   error: null,
   lastFetchTime: null,
   CACHE_DURATION: 120 * 1000, // 2 minutes cache
@@ -42,6 +43,9 @@ export const useStoryStore = create((set, get) => ({
       })
     }
   },
+
+  // Set uploading state
+  setUploading: (isUploading) => set({ isUploading }),
 
   // Open story viewer at specific group
   openViewer: (groupIndex) => {

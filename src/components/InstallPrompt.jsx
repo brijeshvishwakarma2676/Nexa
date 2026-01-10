@@ -95,7 +95,7 @@ export default function InstallPrompt() {
 
                     <button
                         onClick={handleInstall}
-                        className="w-full py-2 px-4 bg-(--color-primary) text-white font-medium rounded-lg hover:bg-(--color-primary-dark) transition"
+                        className="w-full py-2 px-4 bg-(--color-primary) text-white font-medium rounded-lg hover:bg-gray-700 cursor-pointer transition"
                     >
                         Install App
                     </button>

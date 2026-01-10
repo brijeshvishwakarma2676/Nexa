@@ -1,4 +1,4 @@
-import { Plus, ChevronRight, ChevronLeft } from 'lucide-react'
+import { Plus, ChevronRight, ChevronLeft, Loader2 } from 'lucide-react'
 import { useStoryStore } from '../stores/storyStore'
 import { useAuthStore } from '../stores/authStore'
 import { useRef, useState } from 'react'
@@ -6,7 +6,7 @@ import CreateStory from './CreateStory'
 
 export default function StoryBar() {
   const { user } = useAuthStore()
-  const { storyGroups, openViewer } = useStoryStore()
+  const { storyGroups, openViewer, isLoading, isUploading } = useStoryStore()
   const scrollRef = useRef(null)
   const [showLeftArrow, setShowLeftArrow] = useState(false)
   const [showRightArrow, setShowRightArrow] = useState(true)
@@ -64,7 +64,7 @@ export default function StoryBar() {
         {/* Create Story Card */}
         <div
           onClick={() => setShowCreateModal(true)}
-          className="flex-shrink-0 w-28 h-48 relative rounded-xl overflow-hidden cursor-pointer group shadow-sm border border-(--color-border)"
+          className="shrink-0 w-28 h-48 relative rounded-xl overflow-hidden cursor-pointer group shadow-sm border border-(--color-border)"
         >
           {/* User's photo as background */}
           <div className="h-3/4 bg-linear-to-b from-blue-500 to-indigo-600">
@@ -82,14 +82,27 @@ export default function StoryBar() {
 
           {/* Plus button */}
           <div className="absolute left-1/2 -translate-x-1/2 top-[72%] -translate-y-1/2">
-            <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center ring-4 ring-white">
-              <Plus className="w-6 h-6 text-white" />
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center ring-4 ring-white ${isUploading ? 'bg-blue-400' : 'bg-blue-500'}`}>
+              {isUploading ? (
+                <Loader2 className="w-6 h-6 text-white animate-spin" />
+              ) : (
+                <Plus className="w-6 h-6 text-white" />
+              )}
             </div>
           </div>
         </div>
 
+        {/* Loading Skeletons */}
+        {isLoading && (
+          <>
+            <StorySkeleton />
+            <StorySkeleton />
+            <StorySkeleton />
+          </>
+        )}
+
         {/* User's own stories */}
-        {userStoryGroup && (
+        {!isLoading && userStoryGroup && (
           <StoryCard
             group={userStoryGroup}
             index={storyGroups.indexOf(userStoryGroup)}
@@ -99,7 +112,7 @@ export default function StoryBar() {
         )}
 
         {/* Other users' stories */}
-        {otherStoryGroups.map((group) => (
+        {!isLoading && otherStoryGroups.map((group) => (
           <StoryCard
             key={group.user.id}
             group={group}
@@ -125,7 +138,7 @@ function StoryCard({ group, index, onClick, isOwn = false }) {
   return (
     <button
       onClick={() => onClick(index)}
-      className="flex-shrink-0 w-28 h-48 relative rounded-xl overflow-hidden group"
+      className="shrink-0 w-28 h-48 relative rounded-xl overflow-hidden group"
     >
       {/* Story image background */}
       <div className="absolute inset-0">
@@ -156,5 +169,16 @@ function StoryCard({ group, index, onClick, isOwn = false }) {
         </span>
       </div>
     </button>
+  )
+}
+
+function StorySkeleton() {
+  return (
+    <div className="shrink-0 w-28 h-48 relative rounded-xl overflow-hidden bg-gray-100 animate-pulse">
+      <div className="absolute top-3 left-3">
+        <div className="w-10 h-10 rounded-full bg-gray-200 ring-2 ring-white" />
+      </div>
+      <div className="absolute bottom-3 left-3 right-3 h-3 bg-gray-200 rounded w-3/4" />
+    </div>
   )
 }
