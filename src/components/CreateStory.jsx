@@ -39,7 +39,7 @@ const FONT_STYLES = [
 
 export default function CreateStory({ isOpen, onClose }) {
     const { user } = useAuthStore()
-    const { addStory, fetchStories } = useStoryStore()
+    const { addStory, fetchStories, isUploading, setUploading } = useStoryStore()
 
     // Background state
     const [bgType, setBgType] = useState('gradient') // 'gradient' | 'image'
@@ -64,7 +64,6 @@ export default function CreateStory({ isOpen, onClose }) {
     // UI state
     const [showColorPicker, setShowColorPicker] = useState(false)
     const [showFontPicker, setShowFontPicker] = useState(false)
-    const [isPosting, setIsPosting] = useState(false)
     const [error, setError] = useState(null)
 
     const containerRef = useRef(null)
@@ -72,6 +71,7 @@ export default function CreateStory({ isOpen, onClose }) {
     const layerFileInputRef = useRef(null)
     const editInputRef = useRef(null)
     const cropImageRef = useRef(null)
+    const resizeStartRef = useRef(null)
 
     // Crop state
     const [croppingLayerId, setCroppingLayerId] = useState(null)
@@ -139,12 +139,13 @@ export default function CreateStory({ isOpen, onClose }) {
             id: Date.now(),
             type: 'text',
             text: '',
-            translate: [CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2],
+            translate: [0, (CANVAS_HEIGHT - 200) / 2], 
             rotate: 0,
             scale: [1, 1],
             color: '#FFFFFF',
             fontStyleId: 'bold',
             fontSize: 72, // Scaled for 1080p
+            width: CANVAS_WIDTH, 
         }
         setLayers(prev => [...prev, newLayer])
         setSelectedLayerId(newLayer.id)
@@ -318,7 +319,7 @@ export default function CreateStory({ isOpen, onClose }) {
     // ─────────────────────────────────────────────────────────────────────────
 
     const handlePost = async () => {
-        if (isPosting) return
+        if (isUploading) return
 
         // Need at least background or content
         const hasContent = bgType === 'image' || layers.some(l => l.type === 'image' || (l.type === 'text' && l.text.trim()))
@@ -330,7 +331,7 @@ export default function CreateStory({ isOpen, onClose }) {
         setSelectedLayerId(null)
         setShowColorPicker(false)
         setShowFontPicker(false)
-        setIsPosting(true)
+        setUploading(true)
         setError(null)
 
         try {
@@ -373,7 +374,7 @@ export default function CreateStory({ isOpen, onClose }) {
             console.error(err)
             setError(err.response?.data?.detail || 'Failed to create story')
         } finally {
-            setIsPosting(false)
+            setUploading(false)
         }
     }
 
@@ -393,10 +394,10 @@ export default function CreateStory({ isOpen, onClose }) {
 
                 <button
                     onClick={handlePost}
-                    disabled={isPosting}
-                    className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-full text-sm hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                    disabled={isUploading}
+                    className="px-4 py-2 bg-linear-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-full text-sm hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
                 >
-                    {isPosting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Share'}
+                    {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Share'}
                 </button>
             </div>
 
@@ -531,8 +532,9 @@ export default function CreateStory({ isOpen, onClose }) {
                                         style={{
                                             transform: `translate(${layer.translate[0]}px, ${layer.translate[1]}px) rotate(${layer.rotate}deg) scale(${layer.scale[0]}, ${layer.scale[1]})`,
                                             transformOrigin: 'top left',
-                                            width: 'max-content',
-                                            maxWidth: '90%',
+                                            width: `${layer.width || CANVAS_WIDTH}px`,
+                                            height: 'auto',
+                                            textAlign: 'center',
                                             cursor: 'move',
                                             zIndex: selectedLayerId === layer.id ? 20 : 10,
                                         }}
@@ -540,7 +542,7 @@ export default function CreateStory({ isOpen, onClose }) {
                                         onDoubleClick={(e) => { e.stopPropagation(); setEditingLayerId(layer.id); setEditText(layer.text); }}
                                     >
                                         <p
-                                            className="text-center whitespace-pre-wrap select-none px-4"
+                                            className="whitespace-pre-wrap select-none px-4 w-full wrap-break-word"
                                             style={{
                                                 color: layer.color,
                                                 fontSize: `${layer.fontSize}px`,
@@ -587,15 +589,17 @@ export default function CreateStory({ isOpen, onClose }) {
                         {/* Moveable */}
                         {selectedLayerId && getTarget() && !editingLayerId && !croppingLayerId && (
                             <Moveable
+                                key={selectedLayerId}
                                 target={getTarget()}
                                 container={containerRef.current}
                                 draggable={true}
                                 throttleDrag={0}
-                                resizable={selectedLayer?.type === 'image'}
-                                scalable={selectedLayer?.type === 'text' || selectedLayer?.type === 'background'}
+                                resizable={selectedLayer?.type === 'text' ? false : (selectedLayerId === 'background' ? false : true)}
+                                scalable={selectedLayer?.type === 'text' ? { directions: ['nw', 'ne', 'sw', 'se', 'e', 'w'] } : (selectedLayer?.type === 'image' || selectedLayerId === 'background' ? true : false)}
                                 rotatable={true}
-                                origin={false}
-                                keepRatio={selectedLayer?.type === 'image' || selectedLayer?.type === 'background'}
+                                origin={['50%', '0%']}
+                                keepRatio={false}
+                                renderDirections={selectedLayer?.type === 'text' ? ['nw', 'ne', 'sw', 'se', 'e', 'w'] : ['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se']}
                                 
                                 // Coordinate Adjustment
                                 zoom={1 / displayScale}
@@ -629,23 +633,65 @@ export default function CreateStory({ isOpen, onClose }) {
 
                                 onResizeStart={e => {
                                     e.setOrigin(["0", "0"])
-                                    const layerTranslate = selectedLayerId === 'background' 
-                                        ? bgTransform.translate 
-                                        : (layers.find(l => l.id === selectedLayerId)?.translate || [0, 0])
-                                    e.dragStart && e.dragStart.set(layerTranslate)
+                                    // Override keepRatio for text resizing (width changes)
+                                    if (selectedLayer?.type === 'text') {
+                                        e.keepRatio = false
+                                    }
+                                    const layer = layers.find(l => l.id === selectedLayerId)
+                                    if (layer) {
+                                        // Store starting state for centered expansion
+                                        resizeStartRef.current = {
+                                            width: layer.width || 600,
+                                            translate: [...layer.translate]
+                                        }
+                                        e.dragStart && e.dragStart.set(layer.translate)
+                                    } else if (selectedLayerId === 'background') {
+                                        e.dragStart && e.dragStart.set(bgTransform.translate)
+                                    }
                                 }}
                                 onResize={e => {
-                                    e.target.style.width = `${e.width}px`
-                                    e.target.style.height = `${e.height}px`
-                                    e.target.style.transform = e.drag.transform
-                                    updateLayer(selectedLayerId, {
-                                        width: e.width,
-                                        height: e.height,
-                                        translate: e.drag.beforeTranslate
-                                    })
+                                    if (selectedLayer?.type === 'text' && resizeStartRef.current) {
+                                        // Centered expansion for text (like Instagram)
+                                        const { width: startWidth, translate: startTranslate } = resizeStartRef.current;
+                                        const deltaWidth = e.width - startWidth;
+                                        const newX = startTranslate[0] - (deltaWidth / 2);
+                                        
+                                        e.target.style.width = `${e.width}px`
+                                        const newTranslate = [newX, startTranslate[1]];
+
+                                        const layer = layers.find(l => l.id === selectedLayerId);
+                                        if (layer) {
+                                            e.target.style.transform = `translate(${newX}px, ${newTranslate[1]}px) rotate(${layer.rotate}deg) scale(${layer.scale[0]}, ${layer.scale[1]})`
+                                        }
+                                        
+                                        updateLayer(selectedLayerId, {
+                                            width: e.width,
+                                            translate: newTranslate
+                                        })
+                                    } else {
+                                        e.target.style.width = `${e.width}px`
+                                        e.target.style.height = `${e.height}px`
+                                        e.target.style.transform = e.drag.transform
+                                        updateLayer(selectedLayerId, {
+                                            width: e.width,
+                                            height: e.height,
+                                            translate: e.drag.beforeTranslate
+                                        })
+                                    }
                                 }}
 
                                 onScaleStart={e => {
+                                    // Set starting values for this scale operation
+                                    if (selectedLayer?.type === 'text') {
+                                        const layer = layers.find(l => l.id === selectedLayerId)
+                                        if (layer) {
+                                            resizeStartRef.current = {
+                                                width: layer.width || 600,
+                                                translate: [...layer.translate],
+                                                scale: [...layer.scale]
+                                            }
+                                        }
+                                    }
                                     if (selectedLayerId === 'background') {
                                         e.set(bgTransform.scale)
                                     } else {
@@ -654,11 +700,52 @@ export default function CreateStory({ isOpen, onClose }) {
                                     }
                                 }}
                                 onScale={e => {
-                                    e.target.style.transform = e.drag.transform
-                                    if (selectedLayerId === 'background') {
-                                        setBgTransform(prev => ({ ...prev, scale: e.scale, translate: e.drag.beforeTranslate }))
+                                    // For text: detect if it's side handle (width change) vs corner (scale change)
+                                    if (selectedLayer?.type === 'text') {
+                                        const isHorizontalSide = e.direction[0] !== 0 && e.direction[1] === 0 // E or W
+                                        
+                                        if (isHorizontalSide) {
+                                            // Side handles: Change width only (like resize)
+                                            // resizeStartRef is set in onScaleStart
+                                            if (resizeStartRef.current) {
+                                                const { width: startWidth, translate: startTranslate, scale: startScale } = resizeStartRef.current
+                                                const newWidth = startWidth * e.scale[0]
+                                                const deltaWidth = newWidth - startWidth
+                                                const newX = startTranslate[0] - (deltaWidth / 2)
+                                                const newTranslate = [newX, startTranslate[1]]
+                                                
+                                                e.target.style.width = `${newWidth}px`
+                                                e.target.style.transform = `translate(${newX}px, ${newTranslate[1]}px) rotate(${selectedLayer.rotate}deg) scale(${startScale[0]}, ${startScale[1]})`
+                                                
+                                                updateLayer(selectedLayerId, {
+                                                    width: newWidth,
+                                                    translate: newTranslate
+                                                })
+                                            }
+                                        } else {
+                                            // Corner handles: Proportional scaling
+                                            const finalScale = [Math.max(e.scale[0], e.scale[1]), Math.max(e.scale[0], e.scale[1])]
+                                            e.target.style.transform = e.drag.transform
+                                            updateLayer(selectedLayerId, { scale: finalScale, translate: e.drag.beforeTranslate })
+                                        }
                                     } else {
-                                        updateLayer(selectedLayerId, { scale: e.scale, translate: e.drag.beforeTranslate })
+                                        // Non-text layers: normal scaling
+                                        const finalScale = selectedLayer?.type === 'text'
+                                            ? [Math.max(e.scale[0], e.scale[1]), Math.max(e.scale[0], e.scale[1])]
+                                            : e.scale
+
+                                        e.target.style.transform = e.drag.transform
+                                        if (selectedLayerId === 'background') {
+                                            setBgTransform(prev => ({ ...prev, scale: finalScale, translate: e.drag.beforeTranslate }))
+                                        } else {
+                                            updateLayer(selectedLayerId, { scale: finalScale, translate: e.drag.beforeTranslate })
+                                        }
+                                    }
+                                }}
+                                onScaleEnd={e => {
+                                    // Clear resize start ref when scaling ends
+                                    if (selectedLayer?.type === 'text') {
+                                        resizeStartRef.current = null
                                     }
                                 }}
 
@@ -768,7 +855,7 @@ export default function CreateStory({ isOpen, onClose }) {
                                             <button
                                                 key={color}
                                                 onClick={() => updateLayer(selectedLayerId, { color })}
-                                                className={`w-10 h-10 rounded-full flex-shrink-0 border-2 transition-all ${selectedLayer?.color === color ? 'border-purple-500 scale-110 shadow-[0_0_15px_rgba(168,85,247,0.5)]' : 'border-white/10 hover:scale-105'}`}
+                                                className={`w-10 h-10 rounded-full shrink-0 border-2 transition-all ${selectedLayer?.color === color ? 'border-purple-500 scale-110 shadow-[0_0_15px_rgba(168,85,247,0.5)]' : 'border-white/10 hover:scale-105'}`}
                                                 style={{ backgroundColor: color }}
                                             />
                                         ))}
@@ -817,7 +904,7 @@ export default function CreateStory({ isOpen, onClose }) {
                                     <button
                                         key={bg.id}
                                         onClick={() => { setBgType('gradient'); setBgGradientIndex(index); }}
-                                        className={`w-10 h-10 rounded-full flex-shrink-0 transition-all ${bgType === 'gradient' && bgGradientIndex === index ? 'ring-2 ring-purple-500 ring-offset-2 ring-offset-black scale-90' : ''}`}
+                                        className={`w-10 h-10 rounded-full shrink-0 transition-all ${bgType === 'gradient' && bgGradientIndex === index ? 'ring-2 ring-purple-500 ring-offset-2 ring-offset-black scale-90' : ''}`}
                                         style={{ background: bg.gradient }}
                                     />
                                 ))}
@@ -850,7 +937,7 @@ export default function CreateStory({ isOpen, onClose }) {
                             <button
                                 onClick={handleEditConfirm}
                                 disabled={!editText.trim()}
-                                className="flex-1 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-medium disabled:opacity-50"
+                                className="flex-1 py-2.5 bg-linear-to-r from-purple-500 to-pink-500 text-white rounded-xl font-medium disabled:opacity-50"
                             >
                                 Done
                             </button>
@@ -896,7 +983,7 @@ export default function CreateStory({ isOpen, onClose }) {
                             <button
                                 onClick={applyCrop}
                                 disabled={!completedCrop}
-                                className="flex-1 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-medium disabled:opacity-50"
+                                className="flex-1 py-2.5 bg-linear-to-r from-purple-500 to-pink-500 text-white rounded-xl font-medium disabled:opacity-50"
                             >
                                 Apply Crop
                             </button>
@@ -909,7 +996,7 @@ export default function CreateStory({ isOpen, onClose }) {
             <input ref={bgFileInputRef} type="file" accept="image/*" onChange={handleBgImageSelect} className="hidden" />
             <input ref={layerFileInputRef} type="file" accept="image/*" onChange={handleLayerImageSelect} className="hidden" />
             {/* Editing Overlay */}
-            {isPosting && (
+            {isUploading && (
                 <div className="absolute inset-0 z-200 bg-black/80 backdrop-blur-xl flex flex-col items-center justify-center animate-in fade-in duration-300">
                     <div className="relative">
                         <div className="w-20 h-20 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin" />
