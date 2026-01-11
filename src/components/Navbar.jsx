@@ -2,7 +2,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useState, useRef, useEffect } from 'react'
 import {
   Search, Bell, MessageCircle, LogOut, User, Home,
-  Play, Store, Users, Gamepad2, Grid3X3, ArrowLeft, X, Loader2
+  Play, Store, Users, Gamepad2, Grid3X3, ArrowLeft, X, Loader2, Download
 } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
 import { useNotificationStore } from '../stores/notificationStore'
@@ -117,6 +117,26 @@ export default function Navbar() {
     setShowLogoutModal(false)
     logout()
     navigate('/login')
+  }
+  
+  const [deferredPrompt, setDeferredPrompt] = useState(null)
+  
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault()
+      setDeferredPrompt(e)
+    }
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+  }, [])
+
+  const handleInstallApp = async () => {
+    if (!deferredPrompt) return
+    deferredPrompt.prompt()
+    const { outcome } = await deferredPrompt.userChoice
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null)
+    }
   }
 
   const isReels = location.pathname === '/reels'
@@ -402,6 +422,20 @@ export default function Navbar() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                   </button>
+
+                  {deferredPrompt && (
+                    <button
+                      onClick={handleInstallApp}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-(--color-bg) transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-(--color-bg) flex items-center justify-center">
+                          <Download className="w-5 h-5 text-(--color-text-primary)" />
+                        </div>
+                        <span className="font-medium text-(--color-text-primary)">Install app</span>
+                      </div>
+                    </button>
+                  )}
 
                   {/* Settings & Privacy Submenu */}
                   {showSettingsMenu && (
