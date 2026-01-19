@@ -5,6 +5,7 @@ export const useChatStore = create((set, get) => ({
   conversations: [],
   currentConversation: null,
   messages: [],
+  pendingMessages: new Map(), // Track messages being sent
   isLoadingConversations: false,
   isLoadingMessages: false,
   hasMore: false,
@@ -15,6 +16,10 @@ export const useChatStore = create((set, get) => ({
   isConnected: false,
   onlineUsers: new Set(),
   typingUsers: {},
+  pendingReactions: new Map(), // Track reactions being sent
+
+  // Reply state
+  replyingTo: null,
 
   // Fetch conversations list
   fetchConversations: async () => {
@@ -55,28 +60,58 @@ export const useChatStore = create((set, get) => ({
 
   // Select conversation and load messages
   selectConversation: async (conversationId) => {
-    const conversation = get().conversations.find((c) => c.id === conversationId)
+    let conversation = get().conversations.find((c) => c.id === conversationId)
+    
     set({
-      currentConversation: conversation,
+      isLoadingMessages: true,
       messages: [],
       hasMore: false,
-      isLoadingMessages: true // Set loading true immediately to prevent flicker
+      replyingTo: null
     })
 
-    if (conversation) {
-      await get().fetchMessages(conversationId)
-
-      // Mark as read
+    // If not found in list, fetch it
+    if (!conversation) {
       try {
-        await api.patch(`/conversations/${conversationId}/read`)
-        set((state) => ({
-          conversations: state.conversations.map((c) =>
-            c.id === conversationId ? { ...c, unread_count: 0 } : c
-          ),
+        const response = await api.get(`/conversations/${conversationId}`)
+        conversation = response.data
+        // Add to list
+        set(state => ({
+          conversations: [conversation, ...state.conversations]
         }))
       } catch (error) {
-        console.error('Failed to mark as read:', error)
+        console.error('Failed to fetch conversation details:', error)
+        set({ isLoadingMessages: false, error: 'Conversation not found' })
+        return
       }
+    }
+
+    set({ currentConversation: conversation })
+    await get().fetchMessages(conversationId)
+
+    // Mark as read via WebSocket
+    const { ws, messages } = get()
+    if (ws && ws.readyState === WebSocket.OPEN && messages.length > 0) {
+      const unreadMessages = messages.filter(m => 
+        m.sender_id !== conversation.other_user?.id && m.status?.toLowerCase() !== 'read'
+      )
+      if (unreadMessages.length > 0) {
+        ws.send(JSON.stringify({
+          type: 'mark_read',
+          message_ids: unreadMessages.map(m => m.id)
+        }))
+      }
+    }
+
+    // Also update via API
+    try {
+      await api.patch(`/conversations/${conversationId}/read`)
+      set((state) => ({
+        conversations: state.conversations.map((c) =>
+          c.id === conversationId ? { ...c, unread_count: 0 } : c
+        ),
+      }))
+    } catch (error) {
+      console.error('Failed to mark as read:', error)
     }
   },
 
@@ -102,37 +137,169 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
-  // Send message via REST (WebSocket will also work)
-  sendMessage: async (content) => {
-    const { currentConversation } = get()
-    if (!currentConversation) return
+  // Send message with optimistic update
+  sendMessage: async (content, options = {}) => {
+    const { currentConversation, ws, replyingTo } = get()
+    if (!currentConversation) return null
 
-    try {
-      const response = await api.post(
-        `/conversations/${currentConversation.id}/messages`,
-        { content }
-      )
-      const message = response.data
+    const clientMsgId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    
+    // Get user from authStore
+    const user = JSON.parse(localStorage.getItem('user') || '{}')
 
-      // Add to messages
-      set((state) => ({
-        messages: [...state.messages, message],
-      }))
-
-      // Update conversation
-      set((state) => ({
-        conversations: state.conversations.map((c) =>
-          c.id === currentConversation.id
-            ? { ...c, last_message: message, updated_at: message.created_at }
-            : c
-        ),
-      }))
-
-      return message
-    } catch (error) {
-      console.error('Failed to send message:', error)
-      return null
+    // Optimistic update - add message immediately with 'sending' status
+    const tempMessage = {
+      id: clientMsgId,
+      client_msg_id: clientMsgId,
+      conversation_id: currentConversation.id,
+      sender_id: user.id,
+      sender: {
+        id: user.id,
+        username: user.username,
+        display_name: user.display_name,
+        avatar_url: user.avatar_url
+      },
+      content,
+      status: 'sending',
+      read: false,
+      created_at: new Date().toISOString(),
+      reply_to_id: options.replyTo?.id || replyingTo?.id || null,
+      reply_to: options.replyTo || replyingTo || null,
+      media_type: options.mediaType || null,
+      media_url: options.mediaUrl || null,
+      media_thumbnail_url: options.mediaThumbnailUrl || null,
+      media_duration: options.mediaDuration || null,
+      media_file_name: options.mediaFileName || null,
+      media_file_size: options.mediaFileSize || null,
+      is_deleted: false,
+      reactions: [],
+      is_temporary: true
     }
+
+    // Add to messages and pending
+    set(state => ({
+      messages: [...state.messages, tempMessage],
+      pendingMessages: new Map(state.pendingMessages).set(clientMsgId, tempMessage),
+      replyingTo: null // Clear reply after sending
+    }))
+
+    // Update conversation list
+    set((state) => ({
+      conversations: state.conversations.map((c) =>
+        c.id === currentConversation.id
+          ? { ...c, last_message: tempMessage, updated_at: tempMessage.created_at }
+          : c
+      ),
+    }))
+
+    // Send via WebSocket
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: 'send_message',
+        conversation_id: currentConversation.id,
+        content,
+        client_msg_id: clientMsgId,
+        reply_to_id: options.replyTo?.id || replyingTo?.id || null,
+        media_type: options.mediaType,
+        media_url: options.mediaUrl,
+        media_thumbnail_url: options.mediaThumbnailUrl,
+        media_duration: options.mediaDuration,
+        media_file_name: options.mediaFileName,
+        media_file_size: options.mediaFileSize
+      }))
+    } else {
+      // Fallback to REST if WebSocket is not available
+      try {
+        const response = await api.post(
+          `/conversations/${currentConversation.id}/messages`,
+          { 
+            content,
+            reply_to_id: options.replyTo?.id || replyingTo?.id,
+            media_type: options.mediaType,
+            media_url: options.mediaUrl
+          }
+        )
+        // Replace temp message with real one
+        set(state => ({
+          messages: state.messages.map(m =>
+            m.client_msg_id === clientMsgId ? { ...response.data, is_temporary: false } : m
+          ),
+          pendingMessages: new Map([...state.pendingMessages].filter(([k]) => k !== clientMsgId))
+        }))
+      } catch (error) {
+        // Mark message as failed
+        set(state => ({
+          messages: state.messages.map(m =>
+            m.client_msg_id === clientMsgId ? { ...m, status: 'failed' } : m
+          )
+        }))
+        console.error('Failed to send message:', error)
+      }
+    }
+
+    return tempMessage
+  },
+
+  // Set reply target
+  setReplyingTo: (message) => {
+    set({ replyingTo: message })
+  },
+
+  // Clear reply target
+  clearReplyingTo: () => {
+    set({ replyingTo: null })
+  },
+
+  // React to message
+  reactToMessage: (messageId, emoji) => {
+    const { ws } = get()
+    if (!ws || ws.readyState !== WebSocket.OPEN) return
+
+    // Track as pending
+    set(state => ({
+      pendingReactions: new Map(state.pendingReactions).set(messageId, true)
+    }))
+
+    ws.send(JSON.stringify({
+      type: 'react',
+      message_id: messageId,
+      emoji
+    }))
+  },
+
+  // Delete message
+  deleteMessage: (messageId, deleteForEveryone = false) => {
+    const { ws } = get()
+    if (!ws || ws.readyState !== WebSocket.OPEN) return
+
+    ws.send(JSON.stringify({
+      type: 'delete_message',
+      message_id: messageId,
+      delete_for_everyone: deleteForEveryone
+    }))
+  },
+
+  // Forward message
+  forwardMessage: (messageId, toConversationIds) => {
+    const { ws } = get()
+    if (!ws || ws.readyState !== WebSocket.OPEN) return
+
+    ws.send(JSON.stringify({
+      type: 'forward_message',
+      message_id: messageId,
+      to_conversation_ids: toConversationIds
+    }))
+  },
+
+  // Mark messages as read
+  markMessagesAsRead: (messageIds) => {
+    const { ws } = get()
+    if (!ws || ws.readyState !== WebSocket.OPEN) return
+
+    ws.send(JSON.stringify({
+      type: 'mark_read',
+      message_ids: messageIds
+    }))
   },
 
   // Connect WebSocket
@@ -143,12 +310,10 @@ export const useChatStore = create((set, get) => ({
     // Determine WebSocket URL
     let wsUrl
     if (import.meta.env.VITE_API_URL) {
-      // Production: Use VITE_API_URL (e.g. https://backend.com -> wss://backend.com/ws/chat)
       const apiUrl = new URL(import.meta.env.VITE_API_URL)
       const wsProtocol = apiUrl.protocol === 'https:' ? 'wss:' : 'ws:'
       wsUrl = `${wsProtocol}//${apiUrl.host}/ws/chat?token=${token}`
     } else {
-      // Local: Use relative path (Vite proxy handles it)
       const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
       wsUrl = `${wsProtocol}//${window.location.host}/ws/chat?token=${token}`
     }
@@ -191,9 +356,90 @@ export const useChatStore = create((set, get) => ({
     const { type } = data
 
     switch (type) {
-      case 'new_message':
       case 'message_sent':
+        // Replace temporary message with real one
+        {
+          const { client_msg_id } = data.message
+          set(state => {
+            const newMessages = state.messages.map(msg =>
+              msg.client_msg_id === client_msg_id
+                ? { ...data.message, is_temporary: false }
+                : msg
+            )
+            const newPending = new Map(state.pendingMessages)
+            newPending.delete(client_msg_id)
+            return { messages: newMessages, pendingMessages: newPending }
+          })
+          
+          // Update conversation
+          set((state) => ({
+            conversations: state.conversations.map((c) =>
+              c.id === data.message.conversation_id
+                ? { ...c, last_message: data.message, updated_at: data.message.created_at }
+                : c
+            ),
+          }))
+        }
+        break
+
+      case 'new_message':
+        // New message from someone else
         get().handleNewMessage(data.message)
+        break
+
+      case 'message_delivered':
+        // Update message status to delivered
+        set(state => ({
+          messages: state.messages.map(msg =>
+            msg.id === data.message_id
+              ? { ...msg, status: 'delivered', delivered_at: data.delivered_at }
+              : msg
+          )
+        }))
+        break
+
+      case 'message_read':
+        // Update message status to read
+        set(state => ({
+          messages: state.messages.map(msg =>
+            msg.id === data.message_id
+              ? { ...msg, status: 'read', read_at: data.read_at, read: true }
+              : msg
+          )
+        }))
+        break
+
+      case 'message_reaction_update':
+        // Update reactions on message
+        set(state => {
+          const newPending = new Map(state.pendingReactions)
+          newPending.delete(data.message_id)
+          
+          return {
+            messages: state.messages.map(msg =>
+              msg.id === data.message_id
+                ? { ...msg, reactions: data.reactions }
+                : msg
+            ),
+            pendingReactions: newPending
+          }
+        })
+        break
+
+      case 'message_deleted':
+        // Handle message deletion
+        set(state => ({
+          messages: state.messages.map(msg =>
+            msg.id === data.message_id
+              ? { 
+                  ...msg, 
+                  is_deleted: true, 
+                  content: data.delete_for_everyone ? 'This message was deleted' : msg.content,
+                  deleted_for_everyone: data.delete_for_everyone
+                }
+              : msg
+          )
+        }))
         break
 
       case 'user_typing':
@@ -230,10 +476,10 @@ export const useChatStore = create((set, get) => ({
         break
 
       case 'messages_read':
-        // Update read status
+        // Backward compatibility
         set((state) => ({
           messages: state.messages.map((m) =>
-            m.conversation_id === data.conversation_id ? { ...m, read: true } : m
+            m.conversation_id === data.conversation_id ? { ...m, read: true, status: 'READ' } : m
           ),
         }))
         break
@@ -253,6 +499,9 @@ export const useChatStore = create((set, get) => ({
         }
         return { messages: [...state.messages, message] }
       })
+
+      // Auto-mark as read if viewing
+      get().markMessagesAsRead([message.id])
     }
 
     // Update conversation list
@@ -304,12 +553,15 @@ export const useChatStore = create((set, get) => ({
       conversations: [],
       currentConversation: null,
       messages: [],
+      pendingMessages: new Map(),
       isLoadingConversations: false,
       isLoadingMessages: false,
       hasMore: false,
       error: null,
       onlineUsers: new Set(),
       typingUsers: {},
+      replyingTo: null,
     })
   },
 }))
+

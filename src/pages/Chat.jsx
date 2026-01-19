@@ -1,15 +1,16 @@
-import { useState, useEffect, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { Send, Search, ArrowLeft, Loader2 } from 'lucide-react'
-import { formatTimeAgo } from '../utils/dateUtils'
-import { useChatStore } from '../stores/chatStore'
-import { useAuthStore } from '../stores/authStore'
-import SharedPostView from '../components/SharedPostView'
+import { useState, useEffect, useRef } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { Search, ArrowLeft, Loader2 } from "lucide-react";
+import { formatTimeAgo } from "../utils/dateUtils";
+import { useChatStore } from "../stores/chatStore";
+import { useAuthStore } from "../stores/authStore";
+import SharedPostView from "../components/SharedPostView";
+import { MessageBubble, ChatInput } from "../components/chat";
 
 export default function Chat() {
-  const { conversationId } = useParams()
-  const navigate = useNavigate()
-  const { user } = useAuthStore()
+  const { conversationId } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuthStore();
   const {
     conversations,
     currentConversation,
@@ -21,103 +22,122 @@ export default function Chat() {
     fetchConversations,
     selectConversation,
     fetchMessages,
-    sendMessage,
-    sendTyping,
+    deleteMessage,
     isUserOnline,
-  } = useChatStore()
+  } = useChatStore();
 
-  const [newMessage, setNewMessage] = useState('')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [isLoadingOlder, setIsLoadingOlder] = useState(false)
-  const messagesEndRef = useRef(null)
-  const messagesContainerRef = useRef(null)
-  const typingTimeoutRef = useRef(null)
-  const previousScrollHeightRef = useRef(0)
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isLoadingOlder, setIsLoadingOlder] = useState(false);
+  const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
+  const previousScrollHeightRef = useRef(0);
 
   // Fetch conversations on mount
   useEffect(() => {
-    fetchConversations()
-  }, [fetchConversations])
+    fetchConversations();
+  }, [fetchConversations]);
 
   // Select conversation from URL
   useEffect(() => {
     if (conversationId && conversations.length > 0) {
-      selectConversation(parseInt(conversationId))
+      const id = parseInt(conversationId);
+      if (currentConversation?.id !== id) {
+        selectConversation(id);
+      }
     }
-  }, [conversationId, selectConversation])
+  }, [
+    conversationId,
+    selectConversation,
+    conversations,
+    currentConversation?.id,
+  ]);
 
   // Scroll to bottom on initial load or new messages (but not when loading older)
   useEffect(() => {
     if (!isLoadingOlder && messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages.length, isLoadingOlder])
+  }, [messages.length, isLoadingOlder]);
 
   // Load older messages when scrolling to top
   const handleScroll = async () => {
-    const container = messagesContainerRef.current
-    if (!container || isLoadingMessages || isLoadingOlder || !hasMore) return
+    const container = messagesContainerRef.current;
+    if (!container || isLoadingMessages || isLoadingOlder || !hasMore) return;
 
     // Check if scrolled to top (within 50px)
     if (container.scrollTop < 50) {
-      setIsLoadingOlder(true)
-      previousScrollHeightRef.current = container.scrollHeight
+      setIsLoadingOlder(true);
+      previousScrollHeightRef.current = container.scrollHeight;
 
       // Get oldest message's timestamp as cursor
-      const oldestMessage = messages[0]
+      const oldestMessage = messages[0];
       if (oldestMessage && currentConversation) {
-        await fetchMessages(currentConversation.id, oldestMessage.created_at)
-        
+        await fetchMessages(currentConversation.id, oldestMessage.created_at);
+
         // Preserve scroll position after loading
         setTimeout(() => {
-          const newScrollHeight = container.scrollHeight
-          const scrollDiff = newScrollHeight - previousScrollHeightRef.current
-          container.scrollTop = scrollDiff
-          setIsLoadingOlder(false)
-        }, 100)
+          const newScrollHeight = container.scrollHeight;
+          const scrollDiff = newScrollHeight - previousScrollHeightRef.current;
+          container.scrollTop = scrollDiff;
+          setIsLoadingOlder(false);
+        }, 100);
       } else {
-        setIsLoadingOlder(false)
+        setIsLoadingOlder(false);
       }
     }
-  }
+  };
 
-  // Handle typing indicator
-  const handleTyping = () => {
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current)
-    }
+  // Handle message actions
+  const handleForward = (message) => {
+    // TODO: Open forward modal
+    console.log("Forward message:", message.id);
+  };
 
-    sendTyping()
-
-    typingTimeoutRef.current = setTimeout(() => {
-      // Stop sending typing indicator
-    }, 1000)
-  }
-
-  // Send message
-  const handleSend = async (e) => {
-    e.preventDefault()
-
-    if (!newMessage.trim()) return
-
-    await sendMessage(newMessage.trim())
-    setNewMessage('')
-  }
+  const handleDelete = (messageId, deleteForEveryone) => {
+    deleteMessage(messageId, deleteForEveryone);
+  };
 
   // Filter conversations
-  const filteredConversations = conversations.filter((c) =>
-    c.other_user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (c.other_user.display_name?.toLowerCase() || '').includes(searchQuery.toLowerCase())
-  )
+  const filteredConversations = conversations.filter(
+    (c) =>
+      c.other_user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (c.other_user.display_name?.toLowerCase() || "").includes(
+        searchQuery.toLowerCase(),
+      ),
+  );
 
   // Check if other user is typing
-  const isOtherTyping = currentConversation && typingUsers[currentConversation.id]
+  const isOtherTyping =
+    currentConversation && typingUsers[currentConversation.id];
+
+  // Group messages by date
+  const groupMessagesByDate = (msgs) => {
+    const groups = [];
+    let currentDate = null;
+
+    msgs.forEach((msg) => {
+      const msgDate = new Date(msg.created_at).toDateString();
+      if (msgDate !== currentDate) {
+        currentDate = msgDate;
+        groups.push({ type: "date", date: msgDate });
+      }
+      groups.push({ type: "message", data: msg });
+    });
+
+    return groups;
+  };
+
+  const messageGroups = groupMessagesByDate(messages);
 
   return (
     <div className="h-screen pt-14 pb-16 lg:pb-0">
-      <div className={`flex overflow-hidden h-full bg-(--color-card) ${conversationId ? '' : 'border-t border-(--color-border)'}`}>
+      <div
+        className={`flex overflow-hidden h-full bg-(--color-card) ${conversationId ? "" : "border-t border-(--color-border)"}`}
+      >
         {/* Conversations List */}
-        <div className={`w-full md:w-80 border-r border-(--color-border) flex flex-col ${conversationId ? 'hidden md:flex' : 'flex'}`}>
+        <div
+          className={`w-full md:w-80 border-r border-(--color-border) flex flex-col ${conversationId ? "hidden md:flex" : "flex"}`}
+        >
           {/* Header */}
           <div className="p-4 border-b border-(--color-border)">
             <h2 className="text-xl font-bold text-(--color-text-primary) mb-4">
@@ -150,11 +170,14 @@ export default function Chat() {
                 <button
                   key={conv.id}
                   onClick={() => navigate(`/chat/${conv.id}`)}
-                  className={`w-full flex items-center gap-3 p-4 hover:bg-(--color-bg) transition-colors ${currentConversation?.id === conv.id ? 'bg-(--color-primary-light)' : ''}`}
+                  className={`w-full flex items-center gap-3 p-4 hover:bg-(--color-bg) transition-colors ${currentConversation?.id === conv.id ? "bg-(--color-primary-light)" : ""}`}
                 >
                   <div className="relative shrink-0">
                     <img
-                      src={conv.other_user.avatar_url || `https://ui-avatars.com/api/?name=${conv.other_user.username}&background=4F46E5&color=fff`}
+                      src={
+                        conv.other_user.avatar_url ||
+                        `https://ui-avatars.com/api/?name=${conv.other_user.username}&background=4F46E5&color=fff`
+                      }
                       alt={conv.other_user.username}
                       className="w-12 h-12 rounded-full avatar"
                     />
@@ -166,7 +189,8 @@ export default function Chat() {
                   <div className="flex-1 min-w-0 text-left">
                     <div className="flex items-center justify-between gap-2 overflow-hidden">
                       <p className="font-semibold text-(--color-text-primary) truncate flex-1 min-w-0">
-                        {conv.other_user.display_name || conv.other_user.username}
+                        {conv.other_user.display_name ||
+                          conv.other_user.username}
                       </p>
                       {conv.last_message && (
                         <span className="text-xs text-(--color-text-muted) shrink-0 ml-2 whitespace-nowrap">
@@ -179,10 +203,32 @@ export default function Chat() {
                       <p className="text-sm text-(--color-text-muted) truncate flex-1">
                         {(() => {
                           const content = conv.last_message?.content;
-                          if (!content) return 'No messages yet';
-                          const postMatch = content.match(/\[SHARED_POST:\d+:?(.*?)\]/);
+                          if (!content) return "No messages yet";
+
+                          // Check for media
+                          if (conv.last_message?.media_type) {
+                            const mediaIcons = {
+                              image: "📷",
+                              video: "🎬",
+                              audio: "🎤",
+                              file: "📎",
+                            };
+                            return (
+                              mediaIcons[conv.last_message.media_type] +
+                              " " +
+                              (conv.last_message.media_type === "audio"
+                                ? "Voice message"
+                                : conv.last_message.media_type)
+                            );
+                          }
+
+                          const postMatch = content.match(
+                            /\[SHARED_POST:\d+:?(.*?)\]/,
+                          );
                           if (postMatch) {
-                            return postMatch[1] ? `Shared ${postMatch[1]}'s post` : 'Shared a post';
+                            return postMatch[1]
+                              ? `Shared ${postMatch[1]}'s post`
+                              : "Shared a post";
                           }
                           return content;
                         })()}
@@ -201,13 +247,15 @@ export default function Chat() {
         </div>
 
         {/* Chat Area */}
-        <div className={`flex-1 flex flex-col ${conversationId ? 'flex' : 'hidden md:flex'}`}>
+        <div
+          className={`flex-1 flex flex-col ${conversationId ? "flex" : "hidden md:flex"}`}
+        >
           {currentConversation ? (
             <>
               {/* Chat Header */}
               <div className="p-4 border-b border-(--color-border) flex items-center gap-3">
                 <button
-                  onClick={() => navigate('/chat')}
+                  onClick={() => navigate("/chat")}
                   className="md:hidden p-2 rounded-full hover:bg-(--color-bg) transition-colors"
                 >
                   <ArrowLeft className="w-5 h-5" />
@@ -215,7 +263,10 @@ export default function Chat() {
 
                 <div className="relative">
                   <img
-                    src={currentConversation.other_user.avatar_url || `https://ui-avatars.com/api/?name=${currentConversation.other_user.username}&background=4F46E5&color=fff`}
+                    src={
+                      currentConversation.other_user.avatar_url ||
+                      `https://ui-avatars.com/api/?name=${currentConversation.other_user.username}&background=4F46E5&color=fff`
+                    }
                     alt={currentConversation.other_user.username}
                     className="w-10 h-10 rounded-full avatar"
                   />
@@ -226,23 +277,24 @@ export default function Chat() {
 
                 <div>
                   <p className="font-semibold text-(--color-text-primary)">
-                    {currentConversation.other_user.display_name || currentConversation.other_user.username}
+                    {currentConversation.other_user.display_name ||
+                      currentConversation.other_user.username}
                   </p>
                   <p className="text-sm text-(--color-text-muted)">
                     {isOtherTyping
-                      ? 'Typing...'
+                      ? "Typing..."
                       : isUserOnline(currentConversation.other_user.id)
-                        ? 'Online'
-                        : 'Offline'}
+                        ? "Online"
+                        : "Offline"}
                   </p>
                 </div>
               </div>
 
               {/* Messages */}
-              <div 
+              <div
                 ref={messagesContainerRef}
                 onScroll={handleScroll}
-                className="flex-1 overflow-y-auto p-4 space-y-4"
+                className="flex-1 overflow-y-auto p-4"
               >
                 {/* Loading older messages indicator */}
                 {isLoadingOlder && (
@@ -265,40 +317,75 @@ export default function Chat() {
                     </p>
                   </div>
                 ) : (
-                  messages.map((msg) => {
-                    const isMine = msg.sender.id === user?.id
+                  <>
+                    {messageGroups.map((item, index) => {
+                      if (item.type === "date") {
+                        return (
+                          <div
+                            key={`date-${index}`}
+                            className="flex justify-center my-4"
+                          >
+                            <span className="text-xs text-gray-400 bg-gray-100 px-3 py-1 rounded-full">
+                              {new Date(item.date).toLocaleDateString(
+                                undefined,
+                                {
+                                  weekday: "short",
+                                  month: "short",
+                                  day: "numeric",
+                                },
+                              )}
+                            </span>
+                          </div>
+                        );
+                      }
 
-                    return (
-                      <div
-                        key={msg.id}
-                        className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}
-                      >
-                        <div
-                          className={`max-w-[70%] rounded-2xl px-4 py-2 ${isMine
-                            ? 'bg-(--color-primary) text-white rounded-br-md'
-                            : 'bg-(--color-bg) text-(--color-text-primary) rounded-bl-md'
-                            }`}
-                        >
-                          {msg.content.match(/\[SHARED_POST:(\d+)/) ? (
-                            <SharedPostView 
-                              postId={msg.content.match(/\[SHARED_POST:(\d+)/)?.[1]} 
-                              isMine={isMine} 
-                            />
-                          ) : (
-                            <p>{msg.content}</p>
-                          )}
-                          <p className={`text-xs mt-1 ${isMine ? 'text-white/70' : 'text-(--color-text-muted)'}`}>
-                            {formatTimeAgo(msg.created_at)}
-                          </p>
-                        </div>
-                      </div>
-                    )
-                  })
+                      const msg = item.data;
+                      const isOwn =
+                        msg.sender?.id === user?.id ||
+                        msg.sender_id === user?.id;
+
+                      // Handle shared post messages
+                      if (msg.content?.match(/\[SHARED_POST:(\d+)/)) {
+                        return (
+                          <div
+                            key={msg.id}
+                            className={`flex ${isOwn ? "justify-end" : "justify-start"} mb-2`}
+                          >
+                            <div
+                              className={`max-w-[70%] rounded-2xl px-4 py-2 ${
+                                isOwn
+                                  ? "bg-(--color-primary) text-white rounded-br-md"
+                                  : "bg-(--color-bg) text-(--color-text-primary) rounded-bl-md"
+                              }`}
+                            >
+                              <SharedPostView
+                                postId={
+                                  msg.content.match(/\[SHARED_POST:(\d+)/)?.[1]
+                                }
+                                isMine={isOwn}
+                              />
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <MessageBubble
+                          key={msg.id || msg.client_msg_id}
+                          message={msg}
+                          isOwn={isOwn}
+                          showAvatar={!isOwn}
+                          onForward={handleForward}
+                          onDelete={handleDelete}
+                        />
+                      );
+                    })}
+                  </>
                 )}
 
                 {/* Typing indicator */}
                 {isOtherTyping && (
-                  <div className="flex justify-start">
+                  <div className="flex justify-start mb-2">
                     <div className="bg-(--color-bg) rounded-2xl px-4 py-2 rounded-bl-md">
                       <div className="flex gap-1">
                         <span className="w-2 h-2 rounded-full bg-(--color-text-muted) animate-pulse" />
@@ -312,28 +399,8 @@ export default function Chat() {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Message Input */}
-              <form onSubmit={handleSend} className="p-4 border-t border-(--color-border)">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={newMessage}
-                    onChange={(e) => {
-                      setNewMessage(e.target.value)
-                      handleTyping()
-                    }}
-                    placeholder="Type a message..."
-                    className="input flex-1"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!newMessage.trim()}
-                    className="btn btn-primary px-4"
-                  >
-                    <Send className="w-5 h-5" />
-                  </button>
-                </div>
-              </form>
+              {/* Chat Input */}
+              <ChatInput conversationId={currentConversation.id} />
             </>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
@@ -351,5 +418,5 @@ export default function Chat() {
         </div>
       </div>
     </div>
-  )
+  );
 }
