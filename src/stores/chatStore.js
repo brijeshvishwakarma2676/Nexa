@@ -459,6 +459,11 @@ export const useChatStore = create((set, get) => ({
         }, 3000)
         break
 
+      case 'initial_online_users':
+        // Set all initially online users when WebSocket connects
+        set({ onlineUsers: new Set(data.user_ids || []) })
+        break
+
       case 'user_online':
         set((state) => {
           const updated = new Set(state.onlineUsers)
